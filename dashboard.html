@@ -93,7 +93,7 @@
     <label class="field"><span>시즌</span><select id="season"></select></label>
     <label class="field"><span>리그</span><select id="league"></select></label>
     <label class="field"><span>구단</span><select id="team"><option value="all">전체 구단</option></select></label>
-    <label class="field"><span>선수 상태</span><select id="status"><option value="all">전체 선수</option><option value="gem">원석 신호</option><option value="young">25세 이하</option><option value="low">100타석 미만</option><option value="lowrel">표본 신뢰도 낮음</option><option value="excluded">점수 제외(30타석 미만)</option></select></label>
+    <label class="field"><span>선수 상태</span><select id="status"><option value="all">전체 선수</option><option value="gem">원석 신호</option><option value="young">25세 이하</option><option value="low">100타석 미만</option><option value="lowrel">표본 참고 지수 낮음</option><option value="excluded">점수 제외(30타석 미만)</option></select></label>
     <div class="field wide"><span id="minPaL">최소 타석</span><div class="pa-row"><input id="minPa" type="range" min="0" max="600" step="10" value="0" aria-labelledby="minPaL"><output id="minPaV" for="minPa">0</output></div></div>
     <label class="field wide"><span>선수명 · 팀 검색</span><input id="query" type="search" placeholder="예: Judge, NYY" autocomplete="off"></label>
     <div class="field"><span>&nbsp;</span><button class="btn" id="reset" type="button">필터 초기화</button></div>
@@ -112,7 +112,7 @@
 <!-- 03 후보 탐색기 -->
 <section class="section" aria-labelledby="s3">
   <div class="sec-head"><div><div class="sec-no">03 · 후보 탐색기</div><h2 id="s3">어떤 선수가 어떤 근거로 후보에 오르나?</h2><p>열 제목을 눌러 정렬하고, 행을 누르면 지도와 선수 인텔리전스가 함께 바뀝니다.</p></div></div>
-  <div class="table-wrap" tabindex="0" aria-label="선수 목록 표"><table id="mainTable"><thead><tr><th data-k="name"><button class="sort">선수</button></th><th data-k="team"><button class="sort">팀</button></th><th class="n" data-k="age"><button class="sort">나이</button></th><th class="n" data-k="pa"><button class="sort">타석</button></th><th class="n" data-k="ops"><button class="sort">OPS</button></th><th class="n" data-k="iso"><button class="sort">ISO</button></th><th class="n" data-k="bbRate"><button class="sort">BB%</button></th><th class="n" data-k="kRate"><button class="sort">K%</button></th><th class="n" data-k="babip"><button class="sort">BABIP</button></th><th class="n" data-k="signal"><button class="sort">신호 z</button></th><th class="n" data-k="reliability"><button class="sort">신뢰도</button></th><th data-k="state"><button class="sort">상태</button></th></tr></thead><tbody id="tbody"></tbody></table></div>
+  <div class="table-wrap" tabindex="0" aria-label="선수 목록 표"><table id="mainTable"><thead><tr><th data-k="name"><button class="sort">선수</button></th><th data-k="team"><button class="sort">팀</button></th><th class="n" data-k="age"><button class="sort">나이</button></th><th class="n" data-k="pa"><button class="sort">타석</button></th><th class="n" data-k="ops"><button class="sort">OPS</button></th><th class="n" data-k="iso"><button class="sort">ISO</button></th><th class="n" data-k="bbRate"><button class="sort">BB%</button></th><th class="n" data-k="kRate"><button class="sort">K%</button></th><th class="n" data-k="babip"><button class="sort">BABIP</button></th><th class="n" data-k="signal"><button class="sort">신호 z</button></th><th class="n" data-k="reliability"><button class="sort">표본 참고 지수</button></th><th data-k="state"><button class="sort">상태</button></th></tr></thead><tbody id="tbody"></tbody></table></div>
   <p class="tbl-note" id="tblNote"></p>
   <div class="explorer" style="margin-top:var(--s-4)">
     <div class="card"><h3>성적 분포 — 선택 선수는 집단의 어디쯤인가?</h3><p class="sub" id="distNote"></p><label class="field" style="max-width:220px;margin-bottom:var(--s-3)"><span>지표</span><select id="metric"><option value="ops">OPS</option><option value="iso">ISO</option><option value="bbRate">BB%</option><option value="kRate">K%</option><option value="babip">BABIP</option><option value="signal">독립 신호 z</option><option value="age">나이</option></select></label><svg id="dist" class="chart" viewBox="0 0 820 240" role="img" aria-label="선택 지표 분포 히스토그램"></svg></div>
@@ -223,9 +223,9 @@ function draw(plotted,total,shown){
   NVScatter.render($('plot'),$('tip'),{points:plotted,selected,xCut:NV.GEM_OPS_PCT,yCut:NV.GEM_Z,dim:q?qmatch:null,maxLabels:q?0:5,
     xLabel:`현재 생산성 · ${$('season').value} ${LEAGUES[$('league').value]} OPS 백분위 (0–100) →`,yLabel:'독립 신호 z (같은 OPS 대비 세부 지표) →',xLabelShort:'OPS 백분위 →',yLabelShort:'독립 신호 z →',
     aria:`${$('season').value} ${LEAGUES[$('league').value]} 타자 ${plotted.length}명 산점도. 원석 신호 ${plotted.filter(p=>p.isGem).length}명.`,
-    tooltip:p=>`<b>${safe(p.name)}</b> · ${safe(p.team)}<br>${p.pa}타석${p.age!==null?' · '+p.age+'세':''} · 신뢰도 ${NV.relLabel(p.reliability)}<br>OPS ${fmt(p.ops)} (백분위 ${fmt(p.pctOps,0)}) · z ${sgn(p.signal)}<br>ISO ${fmt(p.iso)} · BB% ${pct(p.bbRate)} · K% ${pct(p.kRate)} · BABIP ${fmt(p.babip)}`,
+    tooltip:p=>`<b>${safe(p.name)}</b> · ${safe(p.team)}<br>${p.pa}타석${p.age!==null?' · '+p.age+'세':''} · 표본 참고 지수 ${NV.relLabel(p.reliability)}<br>OPS ${fmt(p.ops)} (백분위 ${fmt(p.pctOps,0)}) · z ${sgn(p.signal)}<br>ISO ${fmt(p.iso)} · BB% ${pct(p.bbRate)} · K% ${pct(p.kRate)} · BABIP ${fmt(p.babip)}`,
     onSelect:(p,o)=>{selected=p;render();if(o&&o.keyboard)$('plot').focus()}});
-  $('warning').textContent=`표시 ${plotted.length}명 · 현재 필터 ${total}명 중 점수 제외 ${total-plotted.length}명(30타석 미만 또는 OBP·SLG 결측)${q?` · 검색어 일치 ${shown}명 강조`:''} · 소표본 선수도 지우지 않고 신뢰도와 함께 표시합니다.`;
+  $('warning').textContent=`표시 ${plotted.length}명 · 현재 필터 ${total}명 중 점수 제외 ${total-plotted.length}명(30타석 미만 또는 OBP·SLG 결측)${q?` · 검색어 일치 ${shown}명 강조`:''} · 소표본 선수도 지우지 않고 표본 참고 지수와 함께 표시합니다.`;
 }
 function dist(){
   const pool=base().filter(r=>r.inPool),k=$('metric').value,vals=pool.map(r=>r[k]).filter(v=>v!==null&&v!==undefined&&Number.isFinite(v)),svg=$('dist');
@@ -262,7 +262,7 @@ function watchList(p){
   if(p.babip!==null&&mb!==null&&p.babip<mb-.02)L.push(`BABIP ${fmt(p.babip)} → 리그 중앙값 ${fmt(mb)} 쪽으로 회복하는지`);
   if(p.kRate>mk)L.push(`K% ${pct(p.kRate)}: 리그 중앙값 ${pct(mk)}보다 높음 — 삼진 비율이 줄어드는지`);
   L.push(`신호를 만든 지표 유지: ISO ${fmt(p.iso)}, BB% ${pct(p.bbRate)}`);
-  if(p.reliability<.6)L.push(`표본 확보: ${p.pa}타석(신뢰도 ${NV.relLabel(p.reliability)}) — 더 많은 타석에서도 지표가 유지되는지`);
+  if(p.reliability<.6)L.push(`표본 확보: ${p.pa}타석(표본 참고 지수 ${NV.relLabel(p.reliability)}) — 더 많은 타석에서도 지표가 유지되는지`);
   return L;
 }
 function profile(){
@@ -274,7 +274,7 @@ function profile(){
   const tr=p.trend?`<div class="h4">직전 시즌(${p.prev.season}) 대비 변화</div><p class="pmeta" style="margin:0">ISO ${sgn(p.trend.iso,3)} · BB% ${sgn(p.trend.bbRate*100,1)}%p · K% ${sgn(p.trend.kRate*100,1)}%p · OPS ${sgn(p.trend.ops,3)}${p.trend.score!==null?` · v1 점수 ${sgn(p.trend.score,1)}`:''}</p>`:p.prev?`<p class="pmeta">직전 시즌 ${p.prev.pa}타석: 비교 가능한 표본이 부족합니다.</p>`:'';
   const nxt=R().find(r=>r.league===p.league&&r.id&&r.id===p.id&&r.season===String(+p.season+1));
   $('profile').innerHTML=`<div class="detail-title">${safe(p.name)}</div><div class="pmeta">${safe(p.team)} · ${p.season}년 · ${LEAGUES[p.league]}${p.pos?' · '+safe(p.pos):''}${p.age!==null?' · '+p.age+'세':''}</div><div style="margin-top:var(--s-3)">${badge(p)}</div>
-  <div class="mgrid"><div><small>타석 · 표본 신뢰도</small><b class="num">${p.pa}</b> <span class="pmeta">${NV.relLabel(p.reliability)} ${fmt(p.reliability,2)}</span></div><div><small>AVG / OBP / SLG</small><b class="num" style="font-size:var(--fs-14)">${fmt(p.avg)} / ${fmt(p.obp)} / ${fmt(p.slg)}</b></div><div><small>OPS (백분위)</small><b class="num">${fmt(p.ops)}</b> <span class="pmeta">${p.pctOps===null?'':fmt(p.pctOps,0)}</span></div><div><small>BB% / K% · BABIP</small><b class="num" style="font-size:var(--fs-14)">${pct(p.bbRate)} / ${pct(p.kRate)} · ${fmt(p.babip)}</b></div></div>
+  <div class="mgrid"><div><small>타석 · 표본 참고 지수</small><b class="num">${p.pa}</b> <span class="pmeta">${NV.relLabel(p.reliability)} ${fmt(p.reliability,2)}</span></div><div><small>AVG / OBP / SLG</small><b class="num" style="font-size:var(--fs-14)">${fmt(p.avg)} / ${fmt(p.obp)} / ${fmt(p.slg)}</b></div><div><small>OPS (백분위)</small><b class="num">${fmt(p.ops)}</b> <span class="pmeta">${p.pctOps===null?'':fmt(p.pctOps,0)}</span></div><div><small>BB% / K% · BABIP</small><b class="num" style="font-size:var(--fs-14)">${pct(p.bbRate)} / ${pct(p.kRate)} · ${fmt(p.babip)}</b></div></div>
   <div class="zline"><span class="z num">${p.signal===null?'보류':sgn(p.signal)}</span><span class="pmeta">독립 신호 z</span></div>${bars?`<p class="pmeta" style="margin:0 0 6px">같은 집단 백분위 (높을수록 좋음)</p><div class="meter">${bars}</div>`:''}
   <div class="h4 good">성장 근거</div><p class="pmeta" style="margin:0;color:var(--ink-2)">${safe(why)}</p>${tr}${trendChart(p)}
   <div class="h4 risk">반대 근거 · 위험</div><ul>${risks.map(x=>`<li>${safe(x)}</li>`).join('')}</ul>
@@ -288,7 +288,7 @@ function compare(){
   if(!cmpATouched&&selected)$('cmpA').value=selected.name+' · '+selected.team;
   const A=findPlayer($('cmpA').value),B=findPlayer($('cmpB').value);
   if(!A||!B){$('compare').innerHTML='<p class="sub" style="margin:0">선수 B를 입력하면 두 선수를 나란히 비교합니다.</p>';return}
-  const rows=[['나이',r=>r.age,0,-1],['타석',r=>r.pa,0,1],['표본 신뢰도',r=>r.reliability,2,1],['OPS',r=>r.ops,3,1],['OPS 백분위',r=>r.pctOps,0,1],['ISO',r=>r.iso,3,1],['BB%',r=>r.bbRate,'%',1],['K%',r=>r.kRate,'%',-1],['BABIP',r=>r.babip,3,0],['세부능력 v1',r=>r.score,1,1],['독립 신호 z',r=>r.signal,'z',1]];
+  const rows=[['나이',r=>r.age,0,-1],['타석',r=>r.pa,0,1],['표본 참고 지수',r=>r.reliability,2,1],['OPS',r=>r.ops,3,1],['OPS 백분위',r=>r.pctOps,0,1],['ISO',r=>r.iso,3,1],['BB%',r=>r.bbRate,'%',1],['K%',r=>r.kRate,'%',-1],['BABIP',r=>r.babip,3,0],['세부능력 v1',r=>r.score,1,1],['독립 신호 z',r=>r.signal,'z',1]];
   const f=(v,d)=>d==='%'?pct(v):d==='z'?sgn(v):fmt(v,d);
   $('compare').innerHTML=`<div class="table-wrap" style="max-height:none"><table class="cmp"><thead><tr><th>지표</th><th class="n">${safe(A.name)}</th><th class="n">${safe(B.name)}</th></tr></thead><tbody>${rows.map(([n,g,d,dir])=>{const a=g(A),b=g(B),w=dir&&a!==null&&b!==null&&a!==b?((a-b)*dir>0?'a':'b'):'';return `<tr><td>${n}</td><td class="n ${w==='a'?'win':''}">${f(a,d)}</td><td class="n ${w==='b'?'win':''}">${f(b,d)}</td></tr>`}).join('')}</tbody></table></div><p class="pmeta" style="margin:var(--s-2) 0 0">▲ = 해당 지표에서 상대적으로 유리한 쪽(나이·K%는 낮을수록, BABIP은 판단하지 않음). 상태: ${safe(A.name)} ${state(A)} · ${safe(B.name)} ${state(B)}</p>`;
 }
@@ -315,7 +315,8 @@ function method(){
   <p><b>비교 단위</b>: 같은 리그·같은 시즌의 30타석 이상 선수. MLB와 KBO는 백분위·회귀계수·결과를 따로 계산하고 섞지 않습니다.</p>
   <p><b>v1 세부능력 점수</b> = ISO 백분위×0.45 + BB% 백분위×0.30 + (100−K% 백분위)×0.25 (가설 가중치)</p>
   <p><b>v2 독립 신호 z</b>: v1을 OPS 백분위에 선형회귀한 잔차를 표준화한 값. OPS와의 상관이 0인 것은 구성상 당연하며, 예측력은 백테스트로만 판단합니다.</p>
-  <p><b>원석 신호</b>: z ≥ 1.0, OPS 백분위 &lt; 45, 100타석 이상. 소표본 선수는 지우지 않고 표본 신뢰도와 함께 표시합니다. 신뢰도는 지표별 PA/(PA+M)의 평균이며, M = K% 60·BB% 120·ISO 160은 공개 연구에서 흔히 인용되는 근사값입니다.</p>
+  <p><b>원석 신호</b>: z ≥ 1.0, OPS 백분위 &lt; 45, 100타석 이상. 소표본 선수는 지우지 않고 표본 참고 지수와 함께 표시합니다.</p>
+  <p><b>표본 참고 지수</b>: 지표별 PA/(PA+M)의 평균으로 계산한 <b>프로젝트 내부의 근사 지표</b>입니다. M 값(K% 60 PA, BB% 120 PA, ISO 160 AB)은 <a href="https://library.fangraphs.com/principles/sample-size/" target="_blank" rel="noopener">FanGraphs Sample Size</a>의 안정화 참고 기준에서 빌려 왔습니다. 다만 FanGraphs 기준은 표본 간 상관이 약 0.7에 이르는 지점이고 이 식은 PA = M일 때 0.5가 되므로 같은 척도가 아니며, 이 모델은 ISO에도 AB 대신 PA를 씁니다. 높음(0.7 이상)·보통(0.5 이상)·낮음 구간은 프로젝트에서 임의로 정한 분류입니다. 검증된 신뢰도나 미래 성공 확률이 아니고, 이 데이터로 검증하지도 않았습니다. 표본이 작을수록 수치를 덜 믿으라는 상대적 참고값으로만 읽어 주세요.</p>
   <p><b>백테스트</b>: 앞 시즌 기록만으로 신호를 만들고 다음 시즌 OPS 백분위 변화와 비교합니다. 기준 모형(OPS 백분위·나이) 대비 R² 증가분과, 단순 OPS 하위 선정과의 차이를 함께 봅니다.</p>
   <p><b>MLB 데이터</b>: <a href="https://sabr.org/lahman-database/" target="_blank" rel="noopener">SABR Lahman Baseball Database</a> 1871–2025(2025판) 중 2023–2025 타격 기록. Copyright 1996–2025 SABR(Sean Lahman 기증), <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>. 가공 내용은 시즌 내 구단 합산, PA = AB+BB+HBP+SH+SF(포수 타격방해 제외), 6월 30일 기준 나이, 주 포지션입니다. 선수 5명·10개 선수-시즌을 MLB 공식 기록과 대조했고, PA 외 지표가 모두 일치했습니다.</p>
   <p><b>KBO 데이터</b>: 원천 권리가 확인되지 않아 공개하지 않습니다. 로컬에서 불러온 CSV로만 분석합니다. 2026 시즌과 퓨처스는 MLB·KBO 모두 미확보입니다.</p>`;

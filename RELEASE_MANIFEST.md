@@ -1,19 +1,19 @@
 # 공개 배포 파일 목록
 
-생성: 2026-10-29 11:33 · scripts/build_release.ps1
+생성: 2026-10-29 12:07 · scripts/build_release.ps1
 
 | 파일 | 바이트 | SHA256(앞 16자) |
 |---|---|---|
 | `.nojekyll` | 0 | `E3B0C44298FC1C14` |
 | `CHANGELOG.md` | 2768 | `DB92AD19CEFFCD0F` |
-| `dashboard.html` | 52505 | `52255B820E0BA698` |
+| `dashboard.html` | 53298 | `DE2DAB88F7AD50B0` |
 | `DATA_AUDIT.md` | 13592 | `DD544643BF60F3D0` |
 | `DATA_VERIFICATION.md` | 4412 | `4370732C523240EF` |
 | `DESIGN_DECISIONS.md` | 16306 | `D1FBD5A3E1850756` |
 | `DESIGN_QA.md` | 10747 | `166DA05D75948625` |
-| `graph.html` | 17305 | `B9613B4DA7178955` |
+| `graph.html` | 17779 | `5A8838D16A944C46` |
 | `index.html` | 12365 | `E965D5210A5B6C2A` |
-| `README.md` | 12472 | `2739A5E0899232EE` |
+| `README.md` | 15304 | `CDB8B8B071C1A352` |
 | `assets/model.js` | 13016 | `B73F815FF38E3351` |
 | `assets/scatter.js` | 7144 | `909E3B1629E6CEB8` |
 | `assets/theme.css` | 16002 | `6FE3A13ACDC6F24B` |
@@ -33,4 +33,4 @@
 | `scripts/build_standalone.ps1` | 2281 | `9E7322865AC4C1CA` |
 | `scripts/check_public.ps1` | 8576 | `6C0464ED727AB9ED` |
 | `scripts/serve.ps1` | 1424 | `3ABC871B43556C73` |
-| `submission/graph_standalone.html` | 245613 | `58127B26C7C3380D` |
+| `submission/graph_standalone.html` | 246087 | `D4C20CD3337B0E70` |

@@ -245,6 +245,7 @@ tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
       <li>점수는 탐색용 지표입니다. 다음 시즌 성공 확률이 아닙니다.</li>
       <li>가중치(45/30/25)는 가설 값이며 추정한 값이 아닙니다.</li>
       <li>z가 높은 선수는 같은 OPS 대비 BABIP이 낮은 경우가 많습니다. 운인지 타구 질 문제인지는 구분할 수 없습니다.</li>
+      <li>표본 참고 지수는 지표별 PA/(PA+M)의 평균인 프로젝트 내부 근사 지표입니다. M(K% 60 PA, BB% 120 PA, ISO 160 AB)은 <a href="https://library.fangraphs.com/principles/sample-size/" target="_blank" rel="noopener">FanGraphs</a> 안정화 참고 기준이지만 척도가 다르고, ISO에도 PA를 씁니다. 높음·보통·낮음 구간은 임의 분류이며 검증된 신뢰도나 성공 확률이 아닙니다.</li>
       <li>MLB의 PA에는 포수 타격방해(연 0~3회)가 빠져 있습니다. 구장·수비 위치·부상은 보정하지 않았습니다.</li></ul></div>
   </div>
 </section>
@@ -472,7 +473,7 @@ function player(p){
   const st=p.isGem?'<span class="badge gem">원석 신호</span>':p.pa<100?'<span class="badge small">소표본</span>':'<span class="badge watch">관찰</span>';
   const bars=p.parts?[['장타 ISO',p.parts.power],['선구 BB%',p.parts.patience],['컨택 K%',p.parts.contact]].map(([n,v])=>`<span>${n}</span><span class="track"><i style="width:${v.toFixed(0)}%"></i></span><span class="v">${v.toFixed(0)}</span>`).join(''):'';
   el.innerHTML=`<p class="eyebrow" style="margin:0">선택 선수</p><div class="pname">${safe(p.name)}</div><div class="pmeta">${safe(p.team)} · ${p.season} ${LG[p.league]}${p.pos?' · '+safe(p.pos):''}${p.age!==null?' · '+p.age+'세':''}</div><div style="margin-top:var(--s-3)">${st}</div>
-  <div class="pgrid"><div><small>OPS (백분위)</small><b class="num">${fmt(p.ops)}</b> <span class="pmeta">${fmt(p.pctOps,0)}</span></div><div><small>타석 · 신뢰도</small><b class="num">${p.pa}</b> <span class="pmeta">${NV.relLabel(p.reliability)}</span></div><div><small>ISO</small><b class="num">${fmt(p.iso)}</b></div><div><small>BB% / K%</small><b class="num">${pct(p.bbRate)} / ${pct(p.kRate)}</b></div></div>
+  <div class="pgrid"><div><small>OPS (백분위)</small><b class="num">${fmt(p.ops)}</b> <span class="pmeta">${fmt(p.pctOps,0)}</span></div><div><small>타석 · 표본 참고 지수</small><b class="num">${p.pa}</b> <span class="pmeta">${NV.relLabel(p.reliability)}</span></div><div><small>ISO</small><b class="num">${fmt(p.iso)}</b></div><div><small>BB% / K%</small><b class="num">${pct(p.bbRate)} / ${pct(p.kRate)}</b></div></div>
   <small style="color:var(--ink-3)">독립 신호 z</small><div class="zbig num">${sgn(p.signal)}</div><p class="sub" style="margin:var(--s-2) 0">같은 집단 백분위 (높을수록 좋음)</p><div class="meter">${bars}</div>
   <p class="sub" style="margin-top:var(--s-3)">BABIP ${fmt(p.babip)} · 상세 리포트와 비교는 <a href="../dashboard.html">대시보드</a>에서 볼 수 있습니다.</p>`;
 }
@@ -489,7 +490,7 @@ function draw(){
   else $('btNote').textContent='KBO 백테스트는 대시보드에서 연속된 두 시즌을 불러오면 실행됩니다(탐색적 검증).';
   if(!st.sel||!pts.includes(st.sel))st.sel=[...gems].sort((a,b)=>b.signal-a.signal)[0]||[...pts].sort((a,b)=>b.signal-a.signal)[0]||null;
   NVScatter.render($('plot'),$('tip'),{points:pts,selected:st.sel,xCut:NV.GEM_OPS_PCT,yCut:NV.GEM_Z,xLabel:`현재 생산성 · ${st.season} ${lg} OPS 백분위 (0–100) →`,yLabel:'독립 신호 z (같은 OPS 대비 세부 지표) →',xLabelShort:`${st.season} OPS 백분위 →`,yLabelShort:'독립 신호 z →',aria:`${st.season} ${lg} 타자 ${pts.length}명의 OPS 백분위와 독립 신호 산점도. 원석 신호 ${gems.length}명.`,
-    tooltip:p=>`<b>${safe(p.name)}</b> · ${safe(p.team)}<br>${p.pa}타석${p.age!==null?' · '+p.age+'세':''} · 신뢰도 ${NV.relLabel(p.reliability)}<br>OPS ${fmt(p.ops)} (백분위 ${fmt(p.pctOps,0)}) · z ${sgn(p.signal)}<br>ISO ${fmt(p.iso)} · BB% ${pct(p.bbRate)} · K% ${pct(p.kRate)}`,
+    tooltip:p=>`<b>${safe(p.name)}</b> · ${safe(p.team)}<br>${p.pa}타석${p.age!==null?' · '+p.age+'세':''} · 표본 참고 지수 ${NV.relLabel(p.reliability)}<br>OPS ${fmt(p.ops)} (백분위 ${fmt(p.pctOps,0)}) · z ${sgn(p.signal)}<br>ISO ${fmt(p.iso)} · BB% ${pct(p.bbRate)} · K% ${pct(p.kRate)}`,
     onSelect:(p,o)=>{st.sel=p;draw();if(o&&o.keyboard)$('plot').focus()}});
   player(st.sel);
 }
