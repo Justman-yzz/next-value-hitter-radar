@@ -1,0 +1,130 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXT VALUE — Hitter Radar · 스카우팅 산점도</title>
+<meta name="application-name" content="NEXT VALUE — Hitter Radar">
+<meta property="og:title" content="NEXT VALUE — Hitter Radar · 산점도">
+<meta property="og:description" content="Find the signals others overlook. Experimental MLB hitter scouting dashboard (2023–2025 batting data), optional local KBO analysis. v0.1.0">
+<meta name="description" content="현재 OPS 대비 세부 지표(ISO·BB%·K%)가 앞선 타자를 찾는 산점도. MLB 2023–2025 실제 기록 공개 시연.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B1220'/%3E%3Ccircle cx='11' cy='21' r='3' fill='%233987E5'/%3E%3Ccircle cx='21' cy='11' r='4' fill='%23199E70'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/theme.css">
+<style>
+.controls{display:flex;flex-wrap:wrap;gap:var(--s-3);align-items:center;justify-content:space-between;margin-bottom:var(--s-3)}
+.controls .left{display:flex;flex-wrap:wrap;gap:var(--s-3);align-items:center}
+.stat{color:var(--ink-2);font-size:var(--fs-13)}.stat b{color:var(--ink-1)}
+.main-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:var(--s-4);align-items:start}
+.pcard .pname{font-size:var(--fs-24);font-weight:750;letter-spacing:-.02em;margin:var(--s-2) 0 2px}
+.pcard .pmeta{color:var(--ink-3);font-size:var(--fs-13)}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-2);overflow:hidden;margin:var(--s-4) 0}
+.pgrid div{background:var(--surface-1);padding:var(--s-3)}.pgrid small{display:block;color:var(--ink-3);font-size:var(--fs-12)}.pgrid b{font-size:var(--fs-18);font-weight:700}
+.zbig{font-size:var(--fs-40);font-weight:760;letter-spacing:-.03em;line-height:1}
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s-4)}
+.three ul,.three ol{margin:0;padding-left:18px;color:var(--ink-2)}.three li{margin:6px 0}
+.msg{font-size:var(--fs-13);margin:0 0 var(--s-3)}.msg.err{color:var(--risk)}.msg.ok{color:var(--signal)}.msg:empty{display:none}
+@media (max-width:1000px){.main-grid{grid-template-columns:1fr}.three{grid-template-columns:1fr}}
+</style></head><body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="topbar"><div class="wrap"><a class="brand" href="index.html">NEXT <b>VALUE</b> <span class="brand-sub">Hitter Radar</span> <span class="ver" title="버전 0.1.0 · 실험 단계">v0.1.0</span> <small>Experimental</small></a><nav class="nav" aria-label="주요 메뉴"><a href="index.html">소개</a><a href="graph.html" aria-current="page">산점도</a><a href="dashboard.html">대시보드</a></nav></div></header>
+<main id="main" class="wrap">
+<section class="page-head">
+  <p class="eyebrow">과제 1 · 핵심 그래프 한 장</p>
+  <h1>OPS는 낮은데 세부 지표가 앞선 타자는 누구인가?</h1>
+  <p class="lede">해당 시즌 타자 <b>전원</b>을 한 장에 올렸습니다. 가로는 현재 성적(OPS 백분위), 세로는 <b>그 OPS 수준에서 기대되는 것보다</b> 장타·선구·컨택 지표가 얼마나 좋은지(독립 신호 z)입니다. 왼쪽 위 영역의 선수가 "현재 성적에 가려진 신호" 후보입니다.</p>
+  <div class="modebar"><div class="mode-switch modes" role="tablist" aria-label="데이터 모드"><button data-m="MLB" role="tab"><b>MLB 공개 시연</b><span>실제 기록 2023–2025</span></button><button data-m="KBO" role="tab"><b>KBO 원석 발굴</b><span>내 CSV · 로컬 분석</span></button></div><div class="source-chip" id="srcChip"></div></div>
+</section>
+
+<section aria-labelledby="chartTitle">
+  <div class="card">
+    <div class="controls">
+      <div class="left"><h2 id="chartTitle" class="sr-only">스카우팅 산점도</h2><div class="seg" id="seasons" role="group" aria-label="시즌"></div><div class="seg" id="leagues" role="group" aria-label="리그"></div><label class="btn primary hidden" id="uploadBtn" for="upload">KBO CSV 불러오기<input id="upload" type="file" accept=".csv,text/csv" multiple></label></div>
+      <div class="stat" id="stat" aria-live="polite"></div>
+    </div>
+    <p class="msg" id="msg" role="status"></p>
+    <div class="empty hidden" id="empty"></div>
+    <div class="main-grid" id="chartArea">
+      <div><div class="chart-wrap"><svg id="plot" class="chart"></svg><div class="tip" id="tip"></div></div>
+        <div class="legend" id="legend"><span><i class="sw gem"></i>원석 신호 · z ≥ 1, OPS 백분위 &lt; 45, 100타석+</span><span><i class="sw base"></i>100타석 이상</span><span><i class="sw small"></i>30~99타석 · 판정 제외</span><span><i class="sw sel"></i>선택 선수</span><span>점 크기 = 타석 수</span></div>
+        <p class="chart-note">점을 누르거나 탭하면 오른쪽에 상세 지표가 나옵니다. 차트에 초점을 두고 ← → 키로 선수를 옮길 수 있습니다. z가 ±3을 넘는 선수는 가장자리에 표시됩니다.</p></div>
+      <aside class="card tight pcard" id="player" aria-live="polite"></aside>
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="defT">
+  <div class="sec-head"><div><div class="sec-no">읽는 법과 한계</div><h2 id="defT">이 그래프가 말하는 것과 말하지 않는 것</h2></div></div>
+  <div class="three">
+    <div class="card"><h3>축과 점의 정의</h3><ol>
+      <li>비교 집단: <b>같은 리그·같은 시즌</b>의 30타석 이상 선수. MLB와 KBO는 따로 계산합니다.</li>
+      <li>세부능력 점수(v1) = ISO 백분위×0.45 + BB% 백분위×0.30 + (100−K% 백분위)×0.25</li>
+      <li>독립 신호 z(v2) = v1을 OPS 백분위에 선형회귀한 잔차를 표준화한 값</li>
+      <li>원석 신호 = z ≥ 1.0, OPS 백분위 &lt; 45, 100타석 이상. KBO 탐색 때 정한 기준이며, MLB 데이터를 본 뒤 바꾸지 않았습니다.</li></ol></div>
+    <div class="card"><h3>알려진 문제 · 검증 상태</h3><ul>
+      <li id="corrNote">—</li>
+      <li>v2의 OPS 상관이 0인 것은 회귀 잔차의 수학적 성질입니다. 그것만으로는 예측력의 증거가 아닙니다.</li>
+      <li><b>모델 상태:</b> Experimental Scouting Model (v0.1.0). 탐색적 검증만 거쳤고, 독립 검증은 하지 않았습니다.</li>
+      <li id="btNote">—</li></ul></div>
+    <div class="card"><h3>한계</h3><ul>
+      <li>점수는 탐색용 지표입니다. 다음 시즌 성공 확률이 아닙니다.</li>
+      <li>가중치(45/30/25)는 가설 값이며 추정한 값이 아닙니다.</li>
+      <li>z가 높은 선수는 같은 OPS 대비 BABIP이 낮은 경우가 많습니다. 운인지 타구 질 문제인지는 구분할 수 없습니다.</li>
+      <li>MLB의 PA에는 포수 타격방해(연 0~3회)가 빠져 있습니다. 구장·수비 위치·부상은 보정하지 않았습니다.</li></ul></div>
+  </div>
+</section>
+</main>
+<footer class="foot"><div class="wrap"><p id="src"></p><p><a href="index.html">소개</a> · <a href="dashboard.html">대시보드에서 비교·백테스트 보기</a></p><p>NEXT VALUE — Hitter Radar · v0.1.0 · Experimental Scouting Model · MLB 2023–2025 타자 · KBO 2024–2025 로컬 · 미래 성적 예측 모델이 아닙니다.</p></div></footer>
+<script src="data/public/mlb_lahman_2023_2025.js"></script>
+<script src="assets/model.js"></script>
+<script src="assets/scatter.js"></script>
+<script>
+const $=id=>document.getElementById(id),{fmt,sgn,pct,safe}=NV;
+const S={MLB:{records:NV.score(NV.loadMLB()),season:null,league:'MLB',sel:null},KBO:{records:[],season:null,league:'KBO',sel:null}};
+let mode='MLB';const cur=()=>S[mode];
+const has=(s,l)=>cur().records.some(r=>r.season===s&&(!l||r.league===l));
+const LG={MLB:'MLB',KBO:'KBO 1군',FUTURES:'퓨처스'};
+function controls(){
+  const st=cur(),ss=[...new Set(st.records.map(r=>r.season))].sort();if(!ss.includes(st.season))st.season=ss[ss.length-1]||null;
+  if(mode==='KBO'&&!has(st.season,st.league))st.league=has(st.season,'KBO')?'KBO':'FUTURES';
+  $('seasons').innerHTML=ss.map(s=>`<button data-s="${s}" class="${s===st.season?'on':''}" aria-pressed="${s===st.season}">${s}</button>`).join('')+(mode==='MLB'?'<button disabled title="공개 이용이 허가된 2026 시즌 원본 없음">2026 미확보</button>':'');
+  $('seasons').classList.toggle('hidden',!ss.length);
+  const lgs=mode==='KBO'?[['KBO','1군'],['FUTURES','퓨처스']].filter(([k])=>has(st.season,k)):[];
+  $('leagues').innerHTML=lgs.map(([k,v])=>`<button data-l="${k}" class="${k===st.league?'on':''}" aria-pressed="${k===st.league}">${v}</button>`).join('');$('leagues').classList.toggle('hidden',!lgs.length);
+  $('seasons').querySelectorAll('button[data-s]').forEach(b=>b.onclick=()=>{st.season=b.dataset.s;st.sel=null;controls();draw()});
+  $('leagues').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.league=b.dataset.l;st.sel=null;controls();draw()});
+}
+function setMode(m){mode=m;document.querySelectorAll('.modes button').forEach(b=>{b.classList.toggle('on',b.dataset.m===m);b.setAttribute('aria-selected',b.dataset.m===m)});
+  $('uploadBtn').classList.toggle('hidden',m!=='KBO');$('msg').textContent='';
+  $('srcChip').innerHTML=m==='MLB'?'<span class="badge ok">공개 데이터</span><span><strong>MLB 2023–2025 정규시즌 · 타자 분석</strong> · SABR Lahman 2025판 · CC BY-SA 3.0 · 2026 미지원</span>':'<span class="badge priv">비공개 데이터</span><span><strong>KBO 2024–2025 · 로컬 데이터</strong> · 이 사이트에 KBO 기록 없음. 선택한 CSV는 브라우저 안에서만 처리됩니다.</span>';
+  $('src').innerHTML=m==='MLB'?(window.NV_MLB?`MLB 공개 시연 데이터 출처: <a href="https://sabr.org/lahman-database/" target="_blank" rel="noopener">SABR Lahman Baseball Database</a> 1871–2025(2025판, Copyright 1996–2025 SABR, Sean Lahman 기증), <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>. 2023–2025 타격 기록을 구단 합산 등으로 가공했고, 가공 데이터(<a href="data/public/mlb_lahman_2023_2025.csv">CSV</a>)도 같은 라이선스를 따릅니다.`:'MLB 시연 데이터 파일을 찾지 못했습니다.'):'KBO 모드는 사용자가 선택한 파일만 이 브라우저 안에서 분석합니다. 파일은 어디에도 전송되지 않고, 이 페이지에는 KBO 기록이 들어 있지 않습니다.';
+  controls();draw()}
+function player(p){
+  const el=$('player');if(!p){el.innerHTML='<p class="sub" style="margin:0">점을 선택하면 선수 지표가 나옵니다.</p>';return}
+  const st=p.isGem?'<span class="badge gem">원석 신호</span>':p.pa<100?'<span class="badge small">소표본</span>':'<span class="badge watch">관찰</span>';
+  const bars=p.parts?[['장타 ISO',p.parts.power],['선구 BB%',p.parts.patience],['컨택 K%',p.parts.contact]].map(([n,v])=>`<span>${n}</span><span class="track"><i style="width:${v.toFixed(0)}%"></i></span><span class="v">${v.toFixed(0)}</span>`).join(''):'';
+  el.innerHTML=`<p class="eyebrow" style="margin:0">선택 선수</p><div class="pname">${safe(p.name)}</div><div class="pmeta">${safe(p.team)} · ${p.season} ${LG[p.league]}${p.pos?' · '+safe(p.pos):''}${p.age!==null?' · '+p.age+'세':''}</div><div style="margin-top:var(--s-3)">${st}</div>
+  <div class="pgrid"><div><small>OPS (백분위)</small><b class="num">${fmt(p.ops)}</b> <span class="pmeta">${fmt(p.pctOps,0)}</span></div><div><small>타석 · 신뢰도</small><b class="num">${p.pa}</b> <span class="pmeta">${NV.relLabel(p.reliability)}</span></div><div><small>ISO</small><b class="num">${fmt(p.iso)}</b></div><div><small>BB% / K%</small><b class="num">${pct(p.bbRate)} / ${pct(p.kRate)}</b></div></div>
+  <small style="color:var(--ink-3)">독립 신호 z</small><div class="zbig num">${sgn(p.signal)}</div><p class="sub" style="margin:var(--s-2) 0">같은 집단 백분위 (높을수록 좋음)</p><div class="meter">${bars}</div>
+  <p class="sub" style="margin-top:var(--s-3)">BABIP ${fmt(p.babip)} · 상세 리포트와 비교는 <a href="dashboard.html">대시보드</a>에서 볼 수 있습니다.</p>`;
+}
+function draw(){
+  const st=cur(),loaded=st.records.length>0;$('chartArea').classList.toggle('hidden',!loaded);$('empty').classList.toggle('hidden',loaded);
+  if(!loaded){$('stat').textContent='';$('corrNote').textContent='데이터를 불러오면 v1 점수와 v2 신호가 OPS와 얼마나 겹치는지 표시합니다.';$('btNote').textContent='백테스트는 대시보드에서 연속된 두 시즌을 불러오면 실행됩니다.';
+    $('empty').innerHTML=mode==='KBO'?`<h3>아직 불러온 KBO 데이터가 없습니다 — 분석 결과를 표시하지 않습니다</h3><p>2024–2025 KBO 기록은 원천 재배포 권리가 확인되지 않아 이 페이지에 넣지 않았습니다. 이용 권한이 있는 CSV를 선택하면 <b>이 브라우저 안에서만</b> 분석합니다. 실제 기록으로 바로 보려면 위의 <b>MLB 공개 시연</b>을 선택하세요.</p><ol><li>필수 열: <code>season, league, player_name, team, PA, BB, SO</code> (league = <code>KBO</code> 또는 <code>FUTURES</code>)</li><li>점수 계산에 필요: <code>OBP</code>(또는 <code>H, AB, HBP, SF</code>)와 <code>AVG·SLG</code>(또는 <code>AB, H, 2B, 3B, HR</code>)</li><li>헤더 예시: <a href="data/schema.csv" download>data/schema.csv</a></li></ol>`:'<h3>MLB 시연 데이터를 불러오지 못했습니다</h3><p>data/public/mlb_lahman_2023_2025.js 파일이 함께 있어야 합니다.</p>';return}
+  const all=st.records.filter(r=>r.season===st.season&&r.league===st.league),pts=all.filter(r=>r.signal!==null),gems=pts.filter(r=>r.isGem),g=NV.groupStats(st.records,st.season,st.league);
+  const lg=st.league==='MLB'?'MLB':st.league==='KBO'?'KBO 1군':'퓨처스';
+  $('stat').innerHTML=`${st.season} ${lg} · 타자 <b>${all.length}</b>명 · 표시(30타석+) <b>${pts.length}</b>명 · 원석 신호 <b>${gems.length}</b>명`;
+  $('corrNote').innerHTML=`<b>기존 점수의 문제:</b> 이 집단에서 v1 점수와 OPS 백분위의 상관은 r = <b>${fmt(g.rV1,2)}</b>입니다. 현재 성적을 다시 재는 것에 가깝습니다. 그래서 세로축을 v2(r = ${fmt(g.rV2,2)})로 바꿨습니다.`;
+  if(mode==='MLB'){const ss=[...new Set(st.records.map(r=>r.season))].sort(),f=String(+st.season-1),bt=ss.includes(f)?NV.backtest(st.records,f,st.season,'MLB'):NV.backtest(st.records,st.season,String(+st.season+1),'MLB');
+    $('btNote').innerHTML=bt.ok?`<b>백테스트(${bt.from}→${bt.to}, ${bt.n}명):</b> 앞 시즌 z와 다음 시즌 OPS 백분위 변화의 상관은 ${sgn(bt.rSig)}, OPS·나이 기준 모형 대비 추가 설명력은 ΔR² +${fmt(bt.dR2,3)}입니다. 원석 그룹과 나머지의 차이는 유의하지 않습니다(p ${fmt(bt.diffP,3)}). 탐색적 검증입니다.`:'백테스트할 연속 시즌이 없습니다.'}
+  else $('btNote').textContent='KBO 백테스트는 대시보드에서 연속된 두 시즌을 불러오면 실행됩니다(탐색적 검증).';
+  if(!st.sel||!pts.includes(st.sel))st.sel=[...gems].sort((a,b)=>b.signal-a.signal)[0]||[...pts].sort((a,b)=>b.signal-a.signal)[0]||null;
+  NVScatter.render($('plot'),$('tip'),{points:pts,selected:st.sel,xCut:NV.GEM_OPS_PCT,yCut:NV.GEM_Z,xLabel:`현재 생산성 · ${st.season} ${lg} OPS 백분위 (0–100) →`,yLabel:'독립 신호 z (같은 OPS 대비 세부 지표) →',xLabelShort:`${st.season} OPS 백분위 →`,yLabelShort:'독립 신호 z →',aria:`${st.season} ${lg} 타자 ${pts.length}명의 OPS 백분위와 독립 신호 산점도. 원석 신호 ${gems.length}명.`,
+    tooltip:p=>`<b>${safe(p.name)}</b> · ${safe(p.team)}<br>${p.pa}타석${p.age!==null?' · '+p.age+'세':''} · 신뢰도 ${NV.relLabel(p.reliability)}<br>OPS ${fmt(p.ops)} (백분위 ${fmt(p.pctOps,0)}) · z ${sgn(p.signal)}<br>ISO ${fmt(p.iso)} · BB% ${pct(p.bbRate)} · K% ${pct(p.kRate)}`,
+    onSelect:(p,o)=>{st.sel=p;draw();if(o&&o.keyboard)$('plot').focus()}});
+  player(st.sel);
+}
+$('upload').addEventListener('change',async e=>{const errs=[];let add=[],skipped=0;for(const f of e.target.files){try{const res=NV.fromCsv(await f.text(),f.name);add.push(...res.rows);skipped+=res.skipped}catch(err){errs.push(err.message)}}e.target.value='';
+  S.KBO.records=NV.score(NV.dedupe(S.KBO.records.concat(add)));controls();draw();
+  const m=$('msg');m.className='msg '+(errs.length?'err':'ok');m.textContent=errs.length?'오류: '+errs.join(' / '):`유효 행 ${add.length}개를 불러왔습니다${skipped?` (league가 KBO/FUTURES가 아니거나 필수값이 빠진 ${skipped}행 제외)`:''}. 파일은 이 브라우저 밖으로 전송되지 않았습니다.`});
+document.querySelectorAll('.modes button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+NVScatter.onResize(()=>{if(cur().records.length)draw()});
+setMode('MLB');
+</script></body></html>

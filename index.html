@@ -1,0 +1,99 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXT VALUE — Hitter Radar · 숨은 타자 신호 스카우팅</title>
+<meta name="application-name" content="NEXT VALUE — Hitter Radar">
+<meta property="og:title" content="NEXT VALUE — Hitter Radar · 소개">
+<meta property="og:description" content="Find the signals others overlook. Experimental MLB hitter scouting dashboard (2023–2025 batting data), optional local KBO analysis. v0.1.0">
+<meta name="description" content="현재 성적에 가려진 타자의 성장 신호를 찾는 데이터 스카우팅 도구. 실제 MLB 2023–2025 기록 공개 시연, KBO는 로컬 CSV 분석.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B1220'/%3E%3Ccircle cx='11' cy='21' r='3' fill='%233987E5'/%3E%3Ccircle cx='21' cy='11' r='4' fill='%23199E70'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/theme.css">
+<style>
+.hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(320px,1fr);gap:var(--s-6);align-items:start;padding:var(--s-7) 0 var(--s-6)}
+.hero h1{font-size:clamp(32px,4.4vw,var(--fs-56));line-height:1.1;letter-spacing:-.04em;font-weight:780;margin:0 0 var(--s-4)}
+.hero h1 em{font-style:normal;color:var(--signal)}
+.cta{display:flex;gap:var(--s-3);flex-wrap:wrap;margin-top:var(--s-5)}.cta .btn{min-height:48px;padding:0 var(--s-5);font-size:var(--fs-16)}
+.answer{background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r-3);overflow:hidden}
+.answer header{padding:var(--s-4) var(--s-5);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:var(--s-3);align-items:center;flex-wrap:wrap}
+.answer header h2{font-size:var(--fs-14);margin:0;color:var(--ink-2);font-weight:650}
+.answer dl{margin:0;display:grid;grid-template-columns:1fr 1fr}
+.answer dl>div{padding:var(--s-4) var(--s-5);border-bottom:1px solid var(--line)}.answer dl>div:nth-child(odd){border-right:1px solid var(--line)}
+.answer dt{font-size:var(--fs-12);color:var(--ink-3);font-weight:600}.answer dd{margin:var(--s-1) 0 0;font-size:var(--fs-32);font-weight:720;letter-spacing:-.03em;line-height:1.15}
+.answer dd small{display:block;font-size:var(--fs-12);font-weight:500;color:var(--ink-3);letter-spacing:0;margin-top:2px}
+.answer p{margin:0;padding:var(--s-4) var(--s-5);color:var(--ink-2);font-size:var(--fs-13)}
+.four{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s-4)}
+.four .card h3{font-size:var(--fs-14);color:var(--ink-3);font-weight:650;margin-bottom:var(--s-2)}.four .card p{margin:0;color:var(--ink-1);font-size:var(--fs-16);line-height:1.5}
+.modes2{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-4)}
+.modes2 .card ul{margin:var(--s-3) 0 0;padding-left:18px;color:var(--ink-2)}.modes2 .card li{margin:4px 0}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s-4);counter-reset:st}
+.steps .card{position:relative;padding-top:var(--s-6)}.steps .card::before{counter-increment:st;content:counter(st,decimal-leading-zero);position:absolute;top:var(--s-4);left:var(--s-5);font-size:var(--fs-12);font-weight:700;color:var(--ink-3);letter-spacing:.08em}
+.steps p{margin:0;color:var(--ink-2)}
+@media (max-width:1000px){.hero{grid-template-columns:1fr}.four{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){.four,.modes2,.steps{grid-template-columns:1fr}.answer dd{font-size:var(--fs-24)}.hero{padding-top:var(--s-5)}.cta .btn{flex:1}}
+</style></head><body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="topbar"><div class="wrap"><a class="brand" href="index.html">NEXT <b>VALUE</b> <span class="brand-sub">Hitter Radar</span> <span class="ver" title="버전 0.1.0 · 실험 단계">v0.1.0</span> <small>Experimental</small></a><nav class="nav" aria-label="주요 메뉴"><a href="index.html" aria-current="page">소개</a><a href="graph.html">산점도</a><a href="dashboard.html">대시보드</a></nav></div></header>
+<main id="main" class="wrap">
+<section class="hero">
+  <div>
+    <p class="eyebrow" lang="en">Find the signals others overlook.</p>
+    <h1>현재 성적에 가려진<br><em>성장 신호</em>를 찾습니다</h1>
+    <p class="lede">NEXT VALUE — Hitter Radar는 OPS로 보면 평범하지만 장타력(ISO)·선구안(BB%)·컨택(K%)이 그 성적보다 앞선 타자를 전체 선수에서 골라냅니다. 그리고 그 신호가 다음 시즌 변화를 실제로 설명하는지 백테스트로 확인합니다.</p>
+    <div class="cta"><a class="btn primary" href="dashboard.html">MLB 실데이터로 바로 탐색</a><a class="btn" href="graph.html">산점도 한 장으로 보기</a></div>
+    <div class="scope-line" aria-label="현재 버전과 데이터 범위"><span>v0.1.0 · Experimental</span><span>MLB 2023–2025 정규시즌 · 타자 분석</span><span>KBO 2024–2025 · 로컬 데이터</span></div>
+ </div>
+  <aside class="answer" aria-labelledby="ansTitle">
+    <header><h2 id="ansTitle">지금 데이터가 말하는 것 · MLB 공개 시연</h2><span class="badge ok">실제 기록</span></header>
+    <dl id="live"><div><dt>2025 분석 대상 타자</dt><dd>—</dd></div><div><dt>원석 신호</dt><dd>—</dd></div><div><dt>신호 → 다음 시즌 변화 상관</dt><dd>—</dd></div><div><dt>OPS·나이 대비 추가 설명력</dt><dd>—</dd></div></dl>
+    <p id="liveNote">계산 중…</p>
+  </aside>
+</section>
+
+<section class="section" aria-labelledby="q4">
+  <div class="sec-head"><div><div class="sec-no">한눈에 보기</div><h2 id="q4">무엇을, 누구를, 어떤 데이터로 찾나요?</h2></div></div>
+  <div class="four">
+    <div class="card"><h3>무엇을 하나요</h3><p>같은 리그·같은 시즌 안에서 현재 OPS와 세부 지표의 어긋남을 측정합니다.</p></div>
+    <div class="card"><h3>누구를 찾나요</h3><p>OPS 백분위는 하위권이지만 세부 지표가 그 성적보다 앞선, 100타석 이상의 타자입니다.</p></div>
+    <div class="card"><h3>어떤 데이터인가요</h3><p>MLB 2023–2025 실제 기록(SABR Lahman, CC BY-SA 3.0). KBO는 내 CSV를 브라우저에서만 분석합니다.</p></div>
+    <div class="card"><h3>무엇을 탐색하나요</h3><p>전체 선수 분포, 선수 검색과 비교, 시즌별 추세, 신호의 백테스트 결과를 볼 수 있습니다.</p></div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="modesT">
+  <div class="sec-head"><div><div class="sec-no">두 가지 모드</div><h2 id="modesT">공개 시연은 MLB, 원석 발굴은 KBO</h2><p>두 모드는 백분위·회귀계수·백테스트를 따로 계산하며 결과를 섞지 않습니다.</p></div></div>
+  <div class="modes2">
+    <div class="card"><h3>MLB 공개 시연 <span class="badge ok">바로 보기</span></h3><p class="sub">파일 없이 첫 화면부터 실제 기록으로 작동</p>
+      <ul><li>2023–2025 정규시즌 타자 1,980개 선수-시즌(1타석 이상)</li><li>출처: SABR Lahman Baseball Database 2025판</li><li>이용 조건: CC BY-SA 3.0 — 출처 표기, 가공 데이터도 같은 라이선스</li><li>2026 시즌: 공개 이용이 허가된 원본이 없어 <b>미확보</b></li></ul></div>
+    <div class="card"><h3>KBO 원석 발굴 <span class="badge priv">비공개 데이터</span></h3><p class="sub">내 CSV를 선택해야 분석이 시작됨</p>
+      <ul><li>대상: 2024–2025시즌 1군 타자 기록(내 CSV)</li><li>KBO 기록은 이 사이트와 저장소에 들어 있지 않습니다</li><li>원천 재배포 권리 미확인, KBO 약관상 재배포·2차 가공 제한</li><li>선택한 파일은 브라우저 안에서만 처리하며 전송하지 않습니다</li></ul></div>
+  </div>
+  <div class="card" style="margin-top:var(--s-4)"><h3>v0.1.0에서 지원하지 않는 것</h3><p class="sub" style="margin:0">2026년 MLB·KBO 기록 · 퓨처스리그·마이너리그 전수 분석 · 투수 분석 · 검증된 미래 활약 확률이나 연봉 예측. 향후 계획은 <a href="README.md">README</a>의 로드맵과 <a href="CHANGELOG.md">CHANGELOG</a>에 있으며, 아직 구현되지 않았습니다.</p></div>
+</section>
+
+<section class="section" aria-labelledby="howT">
+  <div class="sec-head"><div><div class="sec-no">분석 방법</div><h2 id="howT">신호는 이렇게 만들고, 이렇게 검증합니다</h2></div></div>
+  <div class="steps">
+    <div class="card"><h3>세부능력 점수 (v1)</h3><p>ISO·BB%·K%의 같은 리그·시즌 내 백분위를 45/30/25로 가중합니다. 다만 이 점수는 OPS와 상관이 약 0.8이라, 현재 성적을 다시 재는 것에 가깝습니다.</p></div>
+    <div class="card"><h3>독립 신호 z (v2)</h3><p>v1에서 OPS로 설명되는 부분을 회귀로 빼고 남은 잔차를 표준화합니다. OPS와의 상관이 0인 것은 계산상 당연할 뿐, 예측력의 증거가 아닙니다.</p></div>
+    <div class="card"><h3>백테스트</h3><p>앞 시즌 정보만으로 만든 신호가 다음 시즌 OPS 백분위 변화를, OPS·나이만 쓴 기준 모형보다 더 설명하는지 순열검정으로 확인합니다. 성공 확률은 표시하지 않습니다.</p></div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="csvT">
+  <div class="sec-head"><div><div class="sec-no">KBO CSV 형식</div><h2 id="csvT">내 KBO 파일로 분석하려면</h2></div></div>
+  <div class="card"><ol style="margin:0;padding-left:20px;color:var(--ink-2)"><li>필수 열: <code>season, league, player_name, team, PA, BB, SO</code> (league = <code>KBO</code> 또는 <code>FUTURES</code>)</li><li>점수 계산에 필요: <code>OBP</code>(또는 <code>H, AB, HBP, SF</code>)와 <code>AVG·SLG</code>(또는 <code>AB, H, 2B, 3B, HR</code>). 권장 열: <code>player_id, age</code></li><li>헤더 예시: <a href="data/schema.csv" download>data/schema.csv</a> · <a href="dashboard.html?mode=kbo">KBO 모드 열기</a></li></ol></div>
+</section>
+</main>
+<footer class="foot"><div class="wrap"><p>MLB 공개 시연 데이터: <a href="https://sabr.org/lahman-database/" target="_blank" rel="noopener">SABR Lahman Baseball Database</a> 1871–2025(2025판), Copyright 1996–2025 SABR(Sean Lahman 기증), <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>. 가공 데이터(<a href="data/public/mlb_lahman_2023_2025.csv">CSV</a>, <a href="data/public/README.md">가공 내역</a>)도 같은 라이선스를 따릅니다.</p><p>MLB, SABR, KBO는 이 교육용 프로젝트와 관련이 없습니다. 모든 점수는 탐색용 지표이며 성공 확률이 아닙니다.</p><p>NEXT VALUE — Hitter Radar · v0.1.0 · Experimental Scouting Model — 자체 작성 코드는 데이터 라이선스와 별개이며, 코드 라이선스는 아직 지정하지 않았습니다.</p></div></footer>
+<script src="data/public/mlb_lahman_2023_2025.js"></script>
+<script src="assets/model.js"></script>
+<script>
+(function(){
+  const dl=document.getElementById('live'),note=document.getElementById('liveNote');
+  if(!window.NV_MLB||!window.NV){note.textContent='MLB 시연 데이터를 불러오지 못했습니다.';return}
+  const R=NV.score(NV.loadMLB()),s=R.filter(r=>r.season==='2025'&&r.league==='MLB'),bt=NV.backtest(R,'2024','2025','MLB');
+  const v=[[s.length.toLocaleString('ko')+'명',`30타석 이상 ${s.filter(r=>r.inPool).length}명`],[s.filter(r=>r.isGem).length+'명','z ≥ 1 · OPS 백분위 45 미만 · 100타석+'],[NV.sgn(bt.rSig),`2024→2025 · ${bt.n}명 · p < 0.001`],['+'+NV.fmt(bt.dR2,3),`기준 모형 R² ${NV.fmt(bt.baseR2,3)}`]];
+  dl.querySelectorAll('dd').forEach((dd,i)=>{dd.innerHTML=`${v[i][0]}<small>${v[i][1]}</small>`});
+  note.innerHTML=`신호는 다음 시즌 변화를 <b>약하지만 일관되게</b> 설명했습니다. 다만 원석 그룹(${bt.flag.length}명)과 나머지 OPS 하위 선수의 차이는 통계적으로 유의하지 않습니다(p ${NV.fmt(bt.diffP,3)}). 그래서 "원석이 반드시 오른다"고는 말하지 않습니다.`;
+})();
+</script>
+</body></html>

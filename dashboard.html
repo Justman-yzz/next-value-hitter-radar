@@ -1,0 +1,335 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXT VALUE — Hitter Radar · 스카우팅 대시보드</title>
+<meta name="application-name" content="NEXT VALUE — Hitter Radar">
+<meta property="og:title" content="NEXT VALUE — Hitter Radar · 대시보드">
+<meta property="og:description" content="Find the signals others overlook. Experimental MLB hitter scouting dashboard (2023–2025 batting data), optional local KBO analysis. v0.1.0">
+<meta name="description" content="MLB 2023–2025 실제 기록으로 현재 성적에 가려진 성장 신호를 탐색하고 백테스트로 검증하는 스카우팅 대시보드. KBO는 로컬 CSV 분석.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B1220'/%3E%3Ccircle cx='11' cy='21' r='3' fill='%233987E5'/%3E%3Ccircle cx='21' cy='11' r='4' fill='%23199E70'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/theme.css">
+<style>
+.headline{font-size:clamp(20px,2.2vw,28px);line-height:1.35;font-weight:720;letter-spacing:-.025em;margin:0 0 var(--s-4);max-width:62ch}
+.headline em{font-style:normal;color:var(--signal)}
+.scqa{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s-3);margin:var(--s-4) 0}
+.scqa div{border-left:2px solid var(--line-strong);padding:2px 0 2px var(--s-3)}.scqa b{display:block;font-size:var(--fs-12);color:var(--ink-3);letter-spacing:.04em}.scqa p{margin:2px 0 0;color:var(--ink-2);font-size:var(--fs-13)}
+.scqa div:last-child{border-color:var(--signal)}
+.insights{margin:0;padding-left:20px;color:var(--ink-2)}.insights li{margin:var(--s-2) 0;font-size:var(--fs-14)}.insights b{color:var(--ink-1)}
+.kpi-note{font-size:var(--fs-12);color:var(--ink-3);margin:var(--s-2) 0 0}
+.filterbar{display:grid;grid-template-columns:repeat(4,minmax(110px,1fr)) minmax(160px,1.2fr) minmax(180px,1.6fr) auto;gap:var(--s-3);align-items:end;padding:var(--s-4);background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r-3);margin-bottom:var(--s-4)}
+.filterbar .pa-row{display:flex;align-items:center;gap:var(--s-2)}.filterbar output{min-width:40px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-1);font-weight:650}
+.ftoggle{display:none}
+.map-grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:var(--s-4);align-items:start}
+.intel{position:sticky;top:72px;max-height:calc(100vh - 88px);overflow:auto}
+.detail-title{font-size:var(--fs-24);font-weight:760;letter-spacing:-.025em;margin:var(--s-2) 0 2px}
+.pmeta{color:var(--ink-3);font-size:var(--fs-13)}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-2);overflow:hidden;margin:var(--s-4) 0}
+.mgrid div{background:var(--surface-1);padding:var(--s-3)}.mgrid small{display:block;color:var(--ink-3);font-size:var(--fs-12)}.mgrid b{font-size:var(--fs-18);font-weight:700}
+.zline{display:flex;align-items:baseline;gap:var(--s-3);margin:var(--s-2) 0}.zline .z{font-size:var(--fs-40);font-weight:760;letter-spacing:-.03em;line-height:1}
+.h4{font-size:var(--fs-13);font-weight:700;color:var(--ink-2);margin:var(--s-5) 0 var(--s-2);letter-spacing:.01em}
+.h4.risk{color:var(--risk)}.h4.good{color:var(--signal)}
+.intel ul{margin:0;padding-left:18px;color:var(--ink-2);font-size:var(--fs-13)}.intel li{margin:4px 0}
+.explorer{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:var(--s-4);align-items:start}
+.cmp td:first-child{color:var(--ink-3)}.cmp td.win{color:var(--signal);font-weight:700}.cmp td.win::after{content:" ▲";font-size:9px}
+.bt-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-2);overflow:hidden;margin:var(--s-3) 0}
+.bt-grid div{background:var(--surface-1);padding:var(--s-3) var(--s-4)}.bt-grid small{display:block;color:var(--ink-3);font-size:var(--fs-12)}.bt-grid b{font-size:var(--fs-24);font-weight:720}
+.validate>*,.explorer>*,.map-grid>*{min-width:0}
+.validate{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--s-4);align-items:start}
+.caveat{border-left:2px solid var(--caution);padding:var(--s-2) var(--s-3);color:var(--ink-2);font-size:var(--fs-13);background:var(--caution-bg);border-radius:0 var(--r-1) var(--r-1) 0}
+.status-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s-3)}
+.st{background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r-2);padding:var(--s-3) var(--s-4);font-size:var(--fs-13);color:var(--ink-2)}.st b{display:flex;gap:var(--s-2);align-items:center;color:var(--ink-1);font-size:var(--fs-14);margin-bottom:4px}
+.method p{margin:0 0 var(--s-3);color:var(--ink-2)}.method b{color:var(--ink-1)}
+.tbl-note{font-size:var(--fs-12);color:var(--ink-3);margin:var(--s-2) 0 0}
+@media (max-width:1200px){.filterbar{grid-template-columns:repeat(3,minmax(0,1fr))}.map-grid{grid-template-columns:minmax(0,1fr) 320px}}
+@media (max-width:1000px){.map-grid,.explorer,.validate{grid-template-columns:1fr}.intel{position:static;max-height:none}.scqa{grid-template-columns:1fr 1fr}.status-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:760px){
+  .ftoggle{display:flex;width:100%;justify-content:space-between;margin-bottom:var(--s-3)}
+  .filterbar{display:none;grid-template-columns:1fr 1fr}.filterbar.open{display:grid}.filterbar .wide{grid-column:1/-1}
+  .scqa,.status-grid,.bt-grid{grid-template-columns:1fr}
+  .table-wrap{max-height:440px}
+}
+</style></head><body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="topbar"><div class="wrap"><a class="brand" href="index.html">NEXT <b>VALUE</b> <span class="brand-sub">Hitter Radar</span> <span class="ver" title="버전 0.1.0 · 실험 단계">v0.1.0</span> <small>Experimental</small></a><nav class="nav" aria-label="주요 메뉴"><a href="index.html">소개</a><a href="graph.html">산점도</a><a href="dashboard.html" aria-current="page">대시보드</a></nav></div></header>
+<main id="main" class="wrap">
+<section class="page-head">
+  <p class="eyebrow">과제 2 · 스카우팅 대시보드</p>
+  <h1>성적에 가려진 성장 신호 탐색</h1>
+  <div class="modebar"><div class="mode-switch modes" role="tablist" aria-label="데이터 모드"><button data-m="MLB" role="tab"><b>MLB 공개 시연</b><span>실제 기록 2023–2025 · 바로 보기</span></button><button data-m="KBO" role="tab"><b>KBO 원석 발굴</b><span>내 CSV · 브라우저 안에서만 분석</span></button></div><div class="source-chip" id="badge"></div></div>
+  <div class="row" style="display:flex;gap:var(--s-3);flex-wrap:wrap;margin-top:var(--s-3)"><label class="btn primary hidden" id="uploadBtn" for="upload">KBO CSV 불러오기<input id="upload" type="file" accept=".csv,text/csv" multiple></label><button class="btn hidden" id="clear">불러온 KBO 데이터 지우기</button></div>
+</section>
+<div id="notice" class="notice hidden" role="status"></div>
+
+<section id="guide" class="empty hidden" aria-labelledby="guideT"><h3 id="guideT">KBO 모드 — 아직 불러온 데이터가 없어 분석을 실행하지 않았습니다</h3>
+<p>2024–2025 KBO 타자 기록은 <b>원천 재배포 권리가 확인되지 않아</b> 이 페이지와 저장소에 들어 있지 않습니다. 이용 권한이 있는 CSV를 직접 선택하면 그때부터 계산합니다. 실제 기록으로 바로 보려면 위의 <b>MLB 공개 시연</b>을 선택하세요.</p>
+<ol><li><b>KBO CSV 불러오기</b>로 파일을 선택합니다. 여러 시즌 파일을 한꺼번에 고를 수 있습니다.</li>
+<li>필수 열: <code>season, league, player_name, team, PA, BB, SO</code> · league = <code>KBO</code>(1군) 또는 <code>FUTURES</code>(퓨처스)</li>
+<li>점수 계산에 필요: <code>OBP</code>(또는 <code>H, AB, HBP, SF</code>)와 <code>AVG·SLG</code>(또는 <code>AB, H, 2B, 3B, HR</code>). 백테스트에는 <code>player_id</code>와 연속된 두 시즌이 필요합니다.</li>
+<li>헤더 예시: <a href="data/schema.csv" download>data/schema.csv</a></li></ol>
+<p class="sub" style="margin:0">파일은 브라우저 안에서만 읽고 계산하며 어디에도 전송하지 않습니다. 새로 고치면 사라집니다. MLB 데이터와는 따로 계산합니다.</p></section>
+
+<div id="app">
+<!-- 01 핵심 발견 -->
+<section class="section" aria-labelledby="s1">
+  <div class="sec-head"><div><div class="sec-no">01 · 핵심 발견</div><h2 id="s1" class="sr-only">핵심 발견</h2></div></div>
+  <p class="headline" id="headline"></p>
+  <div class="scqa" id="scqa"></div>
+  <div class="kpis" role="group" aria-label="핵심 지표">
+    <div class="kpi"><p class="k-label">분석 대상 타자</p><strong id="kN">—</strong><small id="kNSub"></small></div>
+    <div class="kpi lead"><p class="k-label">원석 신호</p><strong id="kGem">—</strong><small>z ≥ 1 · OPS 백분위 &lt; 45 · 100타석+</small></div>
+    <div class="kpi"><p class="k-label">평가 보류</p><strong id="kHold">—</strong><small>30타석 미만 · 점수 계산 안 함</small></div>
+    <div class="kpi"><p class="k-label">OPS와의 상관 v1 → v2</p><strong id="kCorr">—</strong><small>v2가 0인 것은 잔차의 성질(예측력 아님)</small></div>
+    <div class="kpi"><p class="k-label">신호 → 다음 시즌 변화</p><strong id="kBt">—</strong><small id="kBtSub">연속 두 시즌 필요</small></div>
+    <div class="kpi"><p class="k-label">추가 설명력 ΔR²</p><strong id="kR2">—</strong><small id="kR2Sub">OPS·나이 기준 모형 대비</small></div>
+  </div>
+  <p class="kpi-note">미래 성공 확률과 연봉 전망은 검증되지 않아 표시하지 않습니다.</p>
+  <div class="card" style="margin-top:var(--s-4)"><h3>데이터에서 읽은 것</h3><ul class="insights" id="insights"></ul></div>
+</section>
+
+<!-- 02 탐색 지도 -->
+<section class="section" aria-labelledby="s2">
+  <div class="sec-head"><div><div class="sec-no">02 · 탐색 지도</div><h2 id="s2">전체 분포에서 어긋난 선수를 찾고, 눌러서 근거를 확인합니다</h2><p>필터는 지도·표·분포·비교에 함께 적용됩니다. 이름을 검색하면 해당 선수만 강조하고 나머지는 흐리게 남깁니다.</p></div></div>
+  <button class="btn ftoggle" id="ftoggle" aria-expanded="false" aria-controls="filterbar">필터 <span id="fcount">기본값</span></button>
+  <div class="filterbar" id="filterbar">
+    <label class="field"><span>시즌</span><select id="season"></select></label>
+    <label class="field"><span>리그</span><select id="league"></select></label>
+    <label class="field"><span>구단</span><select id="team"><option value="all">전체 구단</option></select></label>
+    <label class="field"><span>선수 상태</span><select id="status"><option value="all">전체 선수</option><option value="gem">원석 신호</option><option value="young">25세 이하</option><option value="low">100타석 미만</option><option value="lowrel">표본 신뢰도 낮음</option><option value="excluded">점수 제외(30타석 미만)</option></select></label>
+    <div class="field wide"><span id="minPaL">최소 타석</span><div class="pa-row"><input id="minPa" type="range" min="0" max="600" step="10" value="0" aria-labelledby="minPaL"><output id="minPaV" for="minPa">0</output></div></div>
+    <label class="field wide"><span>선수명 · 팀 검색</span><input id="query" type="search" placeholder="예: Judge, NYY" autocomplete="off"></label>
+    <div class="field"><span>&nbsp;</span><button class="btn" id="reset" type="button">필터 초기화</button></div>
+  </div>
+  <div class="map-grid">
+    <div class="card tight">
+      <div id="plotEmpty" class="empty hidden"></div>
+      <div class="chart-wrap"><svg id="plot" class="chart"></svg><div class="tip" id="tip"></div></div>
+      <div class="legend"><span><i class="sw gem"></i>원석 신호</span><span><i class="sw base"></i>100타석 이상</span><span><i class="sw small"></i>30~99타석 · 판정 제외</span><span><i class="sw sel"></i>선택 선수</span><span>점 크기 = 타석 수</span></div>
+      <p class="chart-note" id="warning"></p>
+    </div>
+    <aside class="card tight intel" aria-labelledby="intelT"><p class="eyebrow" id="intelT" style="margin:0">선수 인텔리전스</p><div id="profile" aria-live="polite"></div></aside>
+  </div>
+</section>
+
+<!-- 03 후보 탐색기 -->
+<section class="section" aria-labelledby="s3">
+  <div class="sec-head"><div><div class="sec-no">03 · 후보 탐색기</div><h2 id="s3">어떤 선수가 어떤 근거로 후보에 오르나?</h2><p>열 제목을 눌러 정렬하고, 행을 누르면 지도와 선수 인텔리전스가 함께 바뀝니다.</p></div></div>
+  <div class="table-wrap" tabindex="0" aria-label="선수 목록 표"><table id="mainTable"><thead><tr><th data-k="name"><button class="sort">선수</button></th><th data-k="team"><button class="sort">팀</button></th><th class="n" data-k="age"><button class="sort">나이</button></th><th class="n" data-k="pa"><button class="sort">타석</button></th><th class="n" data-k="ops"><button class="sort">OPS</button></th><th class="n" data-k="iso"><button class="sort">ISO</button></th><th class="n" data-k="bbRate"><button class="sort">BB%</button></th><th class="n" data-k="kRate"><button class="sort">K%</button></th><th class="n" data-k="babip"><button class="sort">BABIP</button></th><th class="n" data-k="signal"><button class="sort">신호 z</button></th><th class="n" data-k="reliability"><button class="sort">신뢰도</button></th><th data-k="state"><button class="sort">상태</button></th></tr></thead><tbody id="tbody"></tbody></table></div>
+  <p class="tbl-note" id="tblNote"></p>
+  <div class="explorer" style="margin-top:var(--s-4)">
+    <div class="card"><h3>성적 분포 — 선택 선수는 집단의 어디쯤인가?</h3><p class="sub" id="distNote"></p><label class="field" style="max-width:220px;margin-bottom:var(--s-3)"><span>지표</span><select id="metric"><option value="ops">OPS</option><option value="iso">ISO</option><option value="bbRate">BB%</option><option value="kRate">K%</option><option value="babip">BABIP</option><option value="signal">독립 신호 z</option><option value="age">나이</option></select></label><svg id="dist" class="chart" viewBox="0 0 820 240" role="img" aria-label="선택 지표 분포 히스토그램"></svg></div>
+    <div class="card"><h3>선수 비교 — 두 선수 중 누가 어떤 지표에서 앞서나?</h3><p class="sub">같은 리그·시즌 안에서 비교합니다. A는 선택 선수로 자동 입력됩니다.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--s-3);margin-bottom:var(--s-3)"><label class="field"><span>선수 A</span><input id="cmpA" list="names" placeholder="선수 A"></label><label class="field"><span>선수 B</span><input id="cmpB" list="names" placeholder="이름 입력 후 선택"></label></div><datalist id="names"></datalist><div id="compare"></div></div>
+  </div>
+</section>
+
+<!-- 04 검증 -->
+<section class="section" aria-labelledby="s4">
+  <div class="sec-head"><div><div class="sec-no">04 · 신호 검증</div><h2 id="s4">앞 시즌의 신호는 다음 시즌 변화를 실제로 설명했나?</h2><p>앞 시즌에 알 수 있던 기록만으로 신호를 만들고, 다음 시즌 OPS 백분위 변화와 비교합니다. 두 시즌 모두 100타석 이상이고 선수 ID로 이어지는 선수만 씁니다.</p></div><label class="field" style="min-width:260px"><span>시즌 쌍</span><select id="btPair"></select></label></div>
+  <div id="backtest"></div>
+</section>
+
+<!-- 05 방법론과 데이터 상태 -->
+<section class="section" aria-labelledby="s5">
+  <div class="sec-head"><div><div class="sec-no">05 · 방법론과 데이터 상태</div><h2 id="s5">무엇을 근거로, 어디까지 말할 수 있나?</h2></div></div>
+  <div class="status-grid" id="coverage"></div>
+  <div class="card method" id="method" style="margin-top:var(--s-4)"></div>
+</section>
+</div>
+</main>
+<footer class="foot"><div class="wrap"><p>NEXT VALUE — Hitter Radar · 교육 과제용 분석 대시보드. MLB 공개 시연 데이터는 SABR Lahman Baseball Database(CC BY-SA 3.0)를 가공한 것입니다. KBO 기록은 이 페이지와 저장소에 들어 있지 않으며, 업로드한 파일은 브라우저 안에서만 처리됩니다.</p><p>MLB, SABR, KBO는 이 프로젝트와 관련이 없습니다. 모든 점수는 탐색용 지표이며 성공 확률이 아닙니다.</p><p>NEXT VALUE — Hitter Radar · v0.1.0 · Experimental Scouting Model · MLB 2023–2025 타자 · KBO 2024–2025 로컬</p></div></footer>
+<script src="data/public/mlb_lahman_2023_2025.js"></script>
+<script src="assets/model.js"></script>
+<script src="assets/scatter.js"></script>
+<script>
+const $=id=>document.getElementById(id),{fmt,sgn,pct,safe}=NV;
+const LEAGUES={MLB:'MLB',KBO:'KBO 1군',FUTURES:'퓨처스'};
+const S={MLB:{records:NV.score(NV.loadMLB()),bt:{}},KBO:{records:[],bt:{}}};
+let mode='MLB',selected=null,sortKey='signal',sortDir=-1,cmpATouched=false;
+const cur=()=>S[mode],R=()=>cur().records;
+const state=r=>r.isGem?'원석 신호':!r.inPool?'점수 제외':r.pa<100?'소표본':'관찰';
+const badge=r=>r.isGem?'<span class="badge gem">원석 신호</span>':!r.inPool?'<span class="badge hold">점수 제외</span>':r.pa<100?'<span class="badge small">소표본</span>':'<span class="badge watch">관찰</span>';
+const pv=(p,it)=>p===null||p===undefined?'—':p<0.001?'< 0.001':p.toFixed(3);
+const med=a=>{const s=a.filter(x=>x!==null&&x!==undefined&&Number.isFinite(x)).sort((x,y)=>x-y);return s.length?s[Math.floor(s.length/2)]:null};
+function setNotice(html,kind=''){const x=$('notice');x.innerHTML=html;x.className='notice '+kind;x.classList.toggle('hidden',!html)}
+function has(s,l){return R().some(r=>r.season===s&&(!l||r.league===l))}
+const seasons=()=>[...new Set(R().map(r=>r.season))].sort().reverse();
+function opts(){
+  const ps=$('season').value,pl=$('league').value,ss=seasons();
+  $('season').innerHTML=ss.map(s=>`<option value="${s}">${s}</option>`).join('')+(mode==='MLB'?'<option disabled>2026 · 미확보</option>':'');$('season').value=ss.includes(ps)?ps:ss[0];
+  const ls=Object.keys(LEAGUES).filter(l=>has($('season').value,l));$('league').innerHTML=ls.map(k=>`<option value="${k}">${LEAGUES[k]}</option>`).join('');$('league').value=ls.includes(pl)?pl:ls[0];
+  const avail=base(),teams=[...new Set(avail.flatMap(x=>x.team.split('→')))].filter(Boolean).sort(),prev=$('team').value;
+  $('team').innerHTML='<option value="all">전체 구단</option>'+teams.map(x=>`<option value="${safe(x)}">${safe(x)}</option>`).join('');if(teams.includes(prev))$('team').value=prev;
+  $('names').innerHTML=avail.filter(r=>r.inPool).map(r=>`<option value="${safe(r.name+' · '+r.team)}">`).join('');
+  const pairs=[];for(const l of Object.keys(LEAGUES))for(const s of [...ss].reverse()){const n=String(+s+1);if(has(s,l)&&has(n,l))pairs.push([s,n,l])}
+  const pp=$('btPair').value;$('btPair').innerHTML=pairs.length?pairs.map(([a,b,l])=>`<option value="${a}|${b}|${l}">${a} 신호 → ${b} 결과 · ${LEAGUES[l]}</option>`).join(''):'<option value="">연속된 두 시즌 데이터 없음</option>';
+  $('btPair').value=pairs.some(p=>p.join('|')===pp)?pp:(pairs.length?pairs[pairs.length-1].join('|'):'');
+}
+function base(){return R().filter(r=>r.season===$('season').value&&r.league===$('league').value)}
+const minPa=()=>+$('minPa').value||0;
+// 지도용: 검색어를 제외한 필터 (검색은 강조로 처리)
+function scoped(){let a=base();if($('team').value!=='all')a=a.filter(r=>r.team.split('→').includes($('team').value));const s=$('status').value;if(s==='gem')a=a.filter(r=>r.isGem);if(s==='young')a=a.filter(r=>r.age!==null&&r.age<=25);if(s==='low')a=a.filter(r=>r.pa<100);if(s==='lowrel')a=a.filter(r=>r.reliability<.5);if(s==='excluded')a=a.filter(r=>!r.inPool);if(minPa())a=a.filter(r=>r.pa>=minPa());return a}
+const qmatch=r=>{const q=$('query').value.trim().toLowerCase();return !q||(r.name+' '+r.team).toLowerCase().includes(q)};
+function filtered(){return scoped().filter(qmatch)}
+function getBt(v){if(!v)return null;const [f,t,l]=v.split('|');return cur().bt[v]??=NV.backtest(R(),f,t,l)}
+function setMode(m){mode=m;selected=null;cmpATouched=false;$('cmpA').value='';$('cmpB').value='';$('query').value='';$('team').value='all';$('status').value='all';$('minPa').value=0;$('minPaV').value='0';
+  document.querySelectorAll('.modes button').forEach(b=>{b.classList.toggle('on',b.dataset.m===m);b.setAttribute('aria-selected',b.dataset.m===m)});
+  $('badge').innerHTML=m==='MLB'?'<span class="badge ok">공개 데이터</span><span><strong>MLB 2023–2025 정규시즌 · 타자 분석</strong> · SABR Lahman 2025판 · CC BY-SA 3.0</span>':'<span class="badge priv">비공개 데이터</span><span><strong>KBO 2024–2025 · 로컬 데이터</strong> · CSV는 브라우저 안에서만 처리, 전송하지 않음</span>';
+  $('uploadBtn').classList.toggle('hidden',m!=='KBO');$('clear').classList.toggle('hidden',m!=='KBO'||!R().length);setNotice('');
+  if(R().length)opts();coverage();method();render()}
+function coverage(){
+  const c=(ok,t,d)=>`<div class="st"><b>${ok?'<span class="badge ok">확보</span>':'<span class="badge no">미확보</span>'}${t}</b>${d}</div>`;let h='';
+  for(const s of [...seasons()].reverse())for(const l of Object.keys(LEAGUES)){const a=R().filter(r=>r.season===s&&r.league===l);if(!a.length)continue;const teams=new Set(a.flatMap(r=>r.team.split('→')));h+=c(true,`${s} ${LEAGUES[l]}`,`타자 ${a.length}명 · ${teams.size}개 구단 · 30타석+ ${a.filter(r=>r.inPool).length}명 · 100타석+ ${a.filter(r=>r.pa>=100).length}명`)}
+  if(mode==='MLB'){h+=c(false,'2026 MLB','공개 이용이 허가된 시즌 원본이 아직 없습니다(Lahman·Retrosheet는 2025까지 공개, MLBDB·MLB Stats API는 재배포 불가 약관). 분석하지 않았습니다.');
+    h+=`<div class="st"><b><span class="badge ok">공개</span>출처 · 라이선스</b><a href="https://sabr.org/lahman-database/" target="_blank" rel="noopener">SABR Lahman Baseball Database</a> 2025판 · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a> · 가공 데이터 <a href="data/public/mlb_lahman_2023_2025.csv">CSV</a> · <a href="data/public/README.md">가공 내역</a></div>`;}
+  else{if(!R().some(r=>r.league==='FUTURES'))h+=c(false,'퓨처스','불러온 파일에 퓨처스 기록이 없습니다. 1군과 섞어 비교하지 않습니다.');
+    h+=c(false,'2026 KBO','허가된 원본이 없어 미확보입니다.');
+    h+=`<div class="st"><b><span class="badge priv">비공개</span>출처·권한 · 사용자 확인 필요</b>불러온 파일: ${[...new Set(R().map(r=>r.sourceFile))].map(safe).join(', ')||'없음'}<br>정확성과 이용 권한은 페이지가 검증하지 않습니다.</div>`;}
+  $('coverage').innerHTML=h;
+}
+function render(){
+  const loaded=R().length>0;$('guide').classList.toggle('hidden',loaded||mode!=='KBO');$('app').classList.toggle('hidden',!loaded);
+  if(!loaded){if(mode==='MLB')setNotice('MLB 시연 데이터 파일(data/public/mlb_lahman_2023_2025.js)을 불러오지 못했습니다.','error');return}
+  const a=filtered(),sc=scoped(),g=NV.groupStats(R(),$('season').value,$('league').value),pool=base().filter(r=>r.inPool);
+  $('kN').textContent=base().length.toLocaleString('ko');$('kNSub').textContent=`${$('season').value} ${LEAGUES[$('league').value]} · 30타석+ ${pool.length}명`;
+  $('kGem').textContent=base().filter(r=>r.isGem).length;$('kHold').textContent=base().filter(r=>!r.inPool).length;$('kCorr').textContent=`${fmt(g.rV1,2)} → ${fmt(g.rV2,2)}`;
+  const bt=getBt($('btPair').value);
+  if(bt&&bt.ok){$('kBt').textContent=sgn(bt.rSig);$('kBt').className='';$('kBtSub').textContent=`${bt.from}→${bt.to} · ${bt.n}명 · p ${pv(bt.rSigP,bt.iters)}`;$('kR2').textContent=bt.dR2===null?'—':'+'+fmt(bt.dR2,3);$('kR2').className='';$('kR2Sub').textContent=`기준 R² ${fmt(bt.baseR2,3)} · 순열 p ${pv(bt.dR2P,bt.iters)}`}
+  else{['kBt','kR2'].forEach(k=>{$(k).textContent='—';$(k).className='na'});$('kBtSub').textContent='연속 두 시즌 필요';$('kR2Sub').textContent='백테스트 후 표시'}
+  const plotted=sc.filter(p=>p.signal!==null);
+  $('plotEmpty').classList.toggle('hidden',plotted.length>0);$('plot').classList.toggle('hidden',!plotted.length);
+  $('plotEmpty').innerHTML=pool.some(r=>r.signal!==null)?'<h3>현재 필터에 맞는 선수가 없습니다</h3><p>조건을 넓히거나 <b>필터 초기화</b>를 눌러 주세요.</p>':'<h3>신호를 계산할 수 없습니다</h3><p>이 시즌·리그에는 30타석 이상이면서 OBP·SLG가 있는 선수가 10명 미만입니다.</p>';
+  // 기본 선택: 신호가 가장 높은 원석 신호 선수(100타석+), 없으면 신호 최상위
+  if(!selected||!a.includes(selected)){const bySig=[...a].sort((x,y)=>(y.signal??-99)-(x.signal??-99));selected=bySig.find(r=>r.isGem)||bySig[0]||null}
+  if(plotted.length)draw(plotted,sc.length,a.length);else $('warning').textContent='';
+  headline(bt);insights(g,bt);dist();table(a);profile();compare();backtestView(bt);filterCount();
+}
+function filterCount(){const n=[$('team').value!=='all',$('status').value!=='all',minPa()>0,$('query').value.trim()!==''].filter(Boolean).length;$('fcount').textContent=n?`${n}개 적용`:'기본값'}
+function headline(bt){
+  const b=base(),gems=b.filter(r=>r.isGem).length,lg=`${$('season').value} ${LEAGUES[$('league').value]}`;
+  $('headline').innerHTML=`${lg} 타자 ${b.length.toLocaleString('ko')}명 중 <em>${gems}명</em>이 "현재 성적에 가려진 신호" 조건을 충족합니다. `+(bt&&bt.ok?(bt.dR2>=.02?'이 신호는 다음 시즌 변화를 약하지만 일관되게 설명했고, 원석 그룹의 우위는 아직 통계적으로 확인되지 않았습니다.':'이 신호의 다음 시즌 설명력은 작습니다.'):'신호의 설명력은 연속된 두 시즌이 있어야 검증할 수 있습니다.');
+  $('scqa').innerHTML=`<div><b>상황</b><p>OPS 같은 결과 지표는 이미 잘하는 선수를 보여 줍니다.</p></div><div><b>문제</b><p>장타·선구·컨택 점수(v1)도 OPS와 r ≈ ${fmt(NV.groupStats(R(),$('season').value,$('league').value).rV1,2)}로 겹쳐, 숨은 선수를 따로 가려내지 못합니다.</p></div><div><b>질문</b><p>같은 OPS 수준에서 세부 지표가 앞선 선수는 다음 시즌에 실제로 더 오를까?</p></div><div><b>답</b><p>${bt&&bt.ok?`OPS·나이를 통제해도 신호가 변화를 일부 설명합니다(ΔR² +${fmt(bt.dR2,3)}). 후보 목록은 "확정"이 아니라 "먼저 볼 선수"입니다.`:'검증 전입니다. 후보 목록은 "먼저 볼 선수"로만 읽습니다.'}</p></div>`;
+}
+function insights(g,bt){
+  const b=base(),gems=b.filter(r=>r.isGem),pool=b.filter(r=>r.inPool),L=[];
+  L.push(`${$('season').value} ${LEAGUES[$('league').value]}: 기존 v1 점수는 OPS 백분위와 r = <b>${fmt(g.rV1,2)}</b>로 겹칩니다. 현재 성적을 다시 재는 것에 가깝다는 뜻입니다. OPS로 설명되는 부분을 뺀 v2 신호로 보면 30타석 이상 ${pool.length}명 중 <b>${gems.length}명</b>이 원석 신호 조건을 충족합니다.`);
+  if(gems.length&&gems.some(r=>r.age!==null))L.push(`원석 신호 선수의 나이 중앙값은 <b>${med(gems.map(r=>r.age))}세</b>입니다(30타석+ 전체 ${med(pool.map(r=>r.age))}세). 원석 판정에는 나이를 쓰지 않았습니다.`);
+  if(gems.length)L.push(`원석 신호 선수의 BABIP 중앙값은 <b>${fmt(med(gems.map(r=>r.babip)))}</b>입니다(전체 ${fmt(med(pool.map(r=>r.babip)))}). 신호의 상당 부분이 낮은 인플레이 타구 타율에서 오며, 운인지 실력인지는 구분할 수 없습니다.`);
+  if(bt&&bt.ok){
+    L.push(`백테스트(${bt.from}→${bt.to}, ${bt.n}명): 앞 시즌 v2 신호와 다음 시즌 OPS 백분위 변화의 상관은 <b>${sgn(bt.rSig)}</b>입니다(순열 p ${pv(bt.rSigP,bt.iters)}). OPS 백분위${bt.useAge?'·나이':''}만 쓴 기준 모형(R² ${fmt(bt.baseR2,3)})에 v2를 더하면 R²가 <b>${'+'+fmt(bt.dR2,3)}</b> 늘어납니다. ${bt.dR2<.02?'추가 설명력은 작습니다.':'작지만 의미 있는 추가 설명력입니다.'}`);
+    L.push(`평균회귀 기준선: OPS 하위(백분위 45 미만) 선수는 원석 여부와 관계없이 다음 시즌 평균 <b>${sgn(bt.lowMean,1)}</b> 백분위 올랐습니다. 원석 신호 ${bt.flag.length}명은 <b>${sgn(bt.flagMean,1)}</b>, 나머지는 ${sgn(bt.restMean,1)}로 차이가 ${sgn(bt.diff,1)}입니다(p ${pv(bt.diffP,bt.iters)}). ${bt.diffP!==null&&bt.diffP<.05?'이 차이는 통계적으로 유의합니다.':'다만 이 그룹 차이는 통계적으로 유의하지 않아 "원석 후보가 확실히 더 오른다"고 말할 수는 없습니다.'}`);
+  } else L.push('연속된 두 시즌 데이터가 없어 신호의 설명력은 아직 검증하지 않았습니다.');
+  $('insights').innerHTML=L.map(x=>`<li>${x}</li>`).join('');
+}
+function draw(plotted,total,shown){
+  const q=$('query').value.trim();
+  NVScatter.render($('plot'),$('tip'),{points:plotted,selected,xCut:NV.GEM_OPS_PCT,yCut:NV.GEM_Z,dim:q?qmatch:null,maxLabels:q?0:5,
+    xLabel:`현재 생산성 · ${$('season').value} ${LEAGUES[$('league').value]} OPS 백분위 (0–100) →`,yLabel:'독립 신호 z (같은 OPS 대비 세부 지표) →',xLabelShort:'OPS 백분위 →',yLabelShort:'독립 신호 z →',
+    aria:`${$('season').value} ${LEAGUES[$('league').value]} 타자 ${plotted.length}명 산점도. 원석 신호 ${plotted.filter(p=>p.isGem).length}명.`,
+    tooltip:p=>`<b>${safe(p.name)}</b> · ${safe(p.team)}<br>${p.pa}타석${p.age!==null?' · '+p.age+'세':''} · 신뢰도 ${NV.relLabel(p.reliability)}<br>OPS ${fmt(p.ops)} (백분위 ${fmt(p.pctOps,0)}) · z ${sgn(p.signal)}<br>ISO ${fmt(p.iso)} · BB% ${pct(p.bbRate)} · K% ${pct(p.kRate)} · BABIP ${fmt(p.babip)}`,
+    onSelect:(p,o)=>{selected=p;render();if(o&&o.keyboard)$('plot').focus()}});
+  $('warning').textContent=`표시 ${plotted.length}명 · 현재 필터 ${total}명 중 점수 제외 ${total-plotted.length}명(30타석 미만 또는 OBP·SLG 결측)${q?` · 검색어 일치 ${shown}명 강조`:''} · 소표본 선수도 지우지 않고 신뢰도와 함께 표시합니다.`;
+}
+function dist(){
+  const pool=base().filter(r=>r.inPool),k=$('metric').value,vals=pool.map(r=>r[k]).filter(v=>v!==null&&v!==undefined&&Number.isFinite(v)),svg=$('dist');
+  if(vals.length<2){svg.innerHTML='';$('distNote').textContent='표시할 값이 부족합니다.';return}
+  const isRate=k==='bbRate'||k==='kRate',lo=Math.min(...vals),hi=Math.max(...vals),nb=k==='age'?Math.min(24,hi-lo+1):24,step=(hi-lo)/nb||1,bins=Array(nb).fill(0);for(const v of vals)bins[Math.min(nb-1,Math.floor((v-lo)/step))]++;
+  const W=Math.max(300,Math.round(svg.parentElement.clientWidth-2)||820),H=W<600?220:240,l=40,r=14,t=24,b=40,mx=Math.max(...bins);svg.setAttribute('viewBox',`0 0 ${W} ${H}`),bw=(W-l-r)/nb,X=v=>l+(W-l-r)*(v-lo)/(hi-lo||1),Y=c=>H-b-(H-t-b)*c/mx,lab=v=>k==='signal'?sgn(v,1):k==='age'?v.toFixed(0)+'세':isRate?(v*100).toFixed(0)+'%':v.toFixed(3);
+  let o='';for(let i=0;i<=4;i++){const c=Math.round(mx*i/4);o+=`<line x1="${l}" x2="${W-r}" y1="${Y(c)}" y2="${Y(c)}" stroke="var(--grid)"/><text x="${l-8}" y="${Y(c)+4}" text-anchor="end" fill="var(--ink-3)" font-size="11">${c}</text>`}
+  const selBin=selected&&selected.inPool&&selected[k]!==null&&selected[k]!==undefined?Math.min(nb-1,Math.floor((selected[k]-lo)/step)):-1;
+  bins.forEach((c,i)=>{if(c)o+=`<rect x="${(l+i*bw+1).toFixed(1)}" y="${Y(c).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${(H-b-Y(c)).toFixed(1)}" fill="${i===selBin?'#3987E5':'var(--series-base)'}" rx="2"><title>${lab(lo+i*step)}–${lab(lo+(i+1)*step)}: ${c}명</title></rect>`});
+  for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4;o+=`<text x="${X(v)}" y="${H-b+18}" text-anchor="middle" fill="var(--ink-3)" font-size="11">${lab(v)}</text>`}
+  const md=med(vals);o+=`<line x1="${X(md)}" x2="${X(md)}" y1="${t}" y2="${H-b}" stroke="var(--ink-3)" stroke-dasharray="4 4"/><text x="${X(md)+5}" y="${t-6}" fill="var(--ink-2)" font-size="11">중앙값 ${lab(md)}</text>`;
+  if(selBin>=0){const x=X(selected[k]);o+=`<line x1="${x}" x2="${x}" y1="${t}" y2="${H-b}" stroke="var(--selected)" stroke-width="2"/><text x="${Math.min(x+5,W-170)}" y="${t+14}" fill="var(--ink-1)" font-size="12" font-weight="700" paint-order="stroke" stroke="var(--chart-surface)" stroke-width="3">${safe(selected.name)} ${lab(selected[k])}</text>`}
+  svg.innerHTML=o;$('distNote').textContent=`${$('season').value} ${LEAGUES[$('league').value]} · 30타석 이상 ${vals.length}명 · 파란 막대와 흰 선 = 선택 선수, 점선 = 중앙값`;
+}
+function table(a){
+  const val=r=>sortKey==='state'?state(r):r[sortKey];
+  const all=[...a].sort((x,y)=>{const u=val(x),v=val(y);if(u===null||u===undefined)return 1;if(v===null||v===undefined)return -1;return (typeof u==='string'?u.localeCompare(v,'ko'):u-v)*sortDir}),rows=all.slice(0,400);
+  $('tbody').innerHTML=rows.length?rows.map((r,i)=>`<tr data-i="${i}" class="${r===selected?'sel':''}" tabindex="0" aria-selected="${r===selected}"><td>${safe(r.name)}</td><td>${safe(r.team)}</td><td class="n">${r.age??'—'}</td><td class="n">${r.pa}</td><td class="n">${fmt(r.ops)}</td><td class="n">${fmt(r.iso)}</td><td class="n">${pct(r.bbRate)}</td><td class="n">${pct(r.kRate)}</td><td class="n">${fmt(r.babip)}</td><td class="n">${sgn(r.signal)}</td><td class="n">${NV.relLabel(r.reliability)}</td><td>${badge(r)}</td></tr>`).join(''):'<tr><td colspan="12">이 조건의 선수가 없습니다. 필터를 넓혀 보세요.</td></tr>';
+  $('tbody').querySelectorAll('tr[data-i]').forEach(tr=>{const go=()=>{selected=rows[+tr.dataset.i];render()};tr.onclick=go;tr.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});
+  document.querySelectorAll('#mainTable th[data-k]').forEach(th=>th.setAttribute('aria-sort',th.dataset.k===sortKey?(sortDir>0?'ascending':'descending'):'none'));
+  $('tblNote').textContent=all.length>400?`${all.length}명 중 정렬 기준 상위 400명을 표시합니다. 검색·필터로 좁히면 모두 볼 수 있습니다.`:`${all.length}명 표시`;
+}
+function trendChart(p){
+  const hist=R().filter(r=>r.league===p.league&&r.id&&r.id===p.id&&r.signal!==null).sort((a,b)=>a.season-b.season);if(hist.length<2)return '';
+  const W=320,H=140,l=34,r=14,t=14,b=26,X=i=>l+(W-l-r)*(i/(hist.length-1)),Yp=v=>H-b-(H-t-b)*v/100,Yz=z=>H-b-(H-t-b)*(Math.max(-3,Math.min(3,z))+3)/6;
+  let s=`<line x1="${l}" x2="${W-r}" y1="${Yp(50)}" y2="${Yp(50)}" stroke="var(--grid)"/><text x="${l-6}" y="${Yp(50)+4}" text-anchor="end" fill="var(--ink-3)" font-size="10">50</text>`;
+  s+=`<polyline fill="none" stroke="#3987E5" stroke-width="2" points="${hist.map((h,i)=>X(i)+','+Yp(h.pctOps)).join(' ')}"/><polyline fill="none" stroke="#199E70" stroke-width="2" stroke-dasharray="5 4" points="${hist.map((h,i)=>X(i)+','+Yz(h.signal)).join(' ')}"/>`;
+  hist.forEach((h,i)=>{s+=`<circle cx="${X(i)}" cy="${Yp(h.pctOps)}" r="4" fill="#3987E5"><title>${h.season} OPS 백분위 ${fmt(h.pctOps,0)}</title></circle><rect x="${X(i)-4}" y="${Yz(h.signal)-4}" width="8" height="8" fill="#199E70"><title>${h.season} 신호 ${sgn(h.signal)}</title></rect><text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="var(--ink-3)" font-size="11">${h.season}</text>`});
+  return `<div class="h4">시즌별 추세</div><svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${safe(p.name)}의 시즌별 OPS 백분위와 신호">${s}</svg><p class="pmeta" style="margin:6px 0 0"><span style="color:#3987E5">●━</span> OPS 백분위(0–100) · <span style="color:#199E70">■┅</span> 독립 신호 z(−3~+3)</p>`;
+}
+function watchList(p){
+  const pool=base().filter(r=>r.inPool),L=[];if(p.signal===null)return ['30타석 이상 확보 여부(현재 '+p.pa+'타석)'];
+  const mb=med(pool.map(r=>r.babip)),mk=med(pool.map(r=>r.kRate));
+  if(p.babip!==null&&mb!==null&&p.babip<mb-.02)L.push(`BABIP ${fmt(p.babip)} → 리그 중앙값 ${fmt(mb)} 쪽으로 회복하는지`);
+  if(p.kRate>mk)L.push(`K% ${pct(p.kRate)}: 리그 중앙값 ${pct(mk)}보다 높음 — 삼진 비율이 줄어드는지`);
+  L.push(`신호를 만든 지표 유지: ISO ${fmt(p.iso)}, BB% ${pct(p.bbRate)}`);
+  if(p.reliability<.6)L.push(`표본 확보: ${p.pa}타석(신뢰도 ${NV.relLabel(p.reliability)}) — 더 많은 타석에서도 지표가 유지되는지`);
+  return L;
+}
+function profile(){
+  const p=selected;if(!p){$('profile').innerHTML='<p class="sub" style="margin-top:var(--s-3)">지도나 표에서 선수를 선택하면 근거와 위험이 나옵니다.</p>';return}
+  const caution=p.pa<30?'분석 보류: 30타석 미만이라 점수를 계산하지 않았습니다.':p.pa<100?'표본 부족: 100타석 미만이라 원석 판정에서 제외합니다.':p.pa<250?'잠정 평가: 추가 시즌 검증이 필요합니다.':'상대적으로 충분한 타석입니다. 그래도 미래 성적을 보장하지 않습니다.';
+  const risks=['신호는 미래 성공률이 아닌 탐색용 지표입니다.',caution];if(p.teamRows>1)risks.push(`시즌 중 이적(${p.team}): 구단별 기록을 합산한 행입니다.`);if(p.signal!==null&&p.signal>=1&&p.babip!==null)risks.push(`BABIP ${fmt(p.babip)}: 높은 신호가 타구 운인지 타구 질 문제인지는 이 데이터로 구분할 수 없습니다.`);if(p.age!==null&&p.age>=32)risks.push(`${p.age}세: 나이에 따른 하락 위험은 모델에 반영하지 않았습니다.`);
+  const bars=p.parts?[['장타 ISO',p.parts.power],['선구 BB%',p.parts.patience],['컨택 K%',p.parts.contact]].map(([n,v])=>`<span>${n}</span><span class="track"><i style="width:${v.toFixed(0)}%"></i></span><span class="v">${v.toFixed(0)}</span>`).join(''):'';
+  const why=p.signal===null?'30타석 이상이면서 OBP·SLG가 있는 비교 집단에 포함되지 않아 신호를 계산하지 않았습니다.':`세부능력 점수(v1) ${fmt(p.score,1)}점은 이 OPS 백분위(${fmt(p.pctOps,0)})에서 기대되는 ${fmt(p.expScore,1)}점보다 ${sgn(p.score-p.expScore,1)}점 ${p.score>=p.expScore?'높습니다':'낮습니다'}. 이를 표준화한 값이 독립 신호 ${sgn(p.signal)}입니다.${p.agePct!==null?` 같은 집단에서 나이가 어린 쪽 상위 ${fmt(100-p.agePct,0)}%입니다.`:''}`;
+  const tr=p.trend?`<div class="h4">직전 시즌(${p.prev.season}) 대비 변화</div><p class="pmeta" style="margin:0">ISO ${sgn(p.trend.iso,3)} · BB% ${sgn(p.trend.bbRate*100,1)}%p · K% ${sgn(p.trend.kRate*100,1)}%p · OPS ${sgn(p.trend.ops,3)}${p.trend.score!==null?` · v1 점수 ${sgn(p.trend.score,1)}`:''}</p>`:p.prev?`<p class="pmeta">직전 시즌 ${p.prev.pa}타석: 비교 가능한 표본이 부족합니다.</p>`:'';
+  const nxt=R().find(r=>r.league===p.league&&r.id&&r.id===p.id&&r.season===String(+p.season+1));
+  $('profile').innerHTML=`<div class="detail-title">${safe(p.name)}</div><div class="pmeta">${safe(p.team)} · ${p.season}년 · ${LEAGUES[p.league]}${p.pos?' · '+safe(p.pos):''}${p.age!==null?' · '+p.age+'세':''}</div><div style="margin-top:var(--s-3)">${badge(p)}</div>
+  <div class="mgrid"><div><small>타석 · 표본 신뢰도</small><b class="num">${p.pa}</b> <span class="pmeta">${NV.relLabel(p.reliability)} ${fmt(p.reliability,2)}</span></div><div><small>AVG / OBP / SLG</small><b class="num" style="font-size:var(--fs-14)">${fmt(p.avg)} / ${fmt(p.obp)} / ${fmt(p.slg)}</b></div><div><small>OPS (백분위)</small><b class="num">${fmt(p.ops)}</b> <span class="pmeta">${p.pctOps===null?'':fmt(p.pctOps,0)}</span></div><div><small>BB% / K% · BABIP</small><b class="num" style="font-size:var(--fs-14)">${pct(p.bbRate)} / ${pct(p.kRate)} · ${fmt(p.babip)}</b></div></div>
+  <div class="zline"><span class="z num">${p.signal===null?'보류':sgn(p.signal)}</span><span class="pmeta">독립 신호 z</span></div>${bars?`<p class="pmeta" style="margin:0 0 6px">같은 집단 백분위 (높을수록 좋음)</p><div class="meter">${bars}</div>`:''}
+  <div class="h4 good">성장 근거</div><p class="pmeta" style="margin:0;color:var(--ink-2)">${safe(why)}</p>${tr}${trendChart(p)}
+  <div class="h4 risk">반대 근거 · 위험</div><ul>${risks.map(x=>`<li>${safe(x)}</li>`).join('')}</ul>
+  <div class="h4">다음 시즌에 확인할 지표</div><ul>${watchList(p).map(x=>`<li>${safe(x)}</li>`).join('')}</ul>
+  ${nxt&&p.signal!==null?`<p class="pmeta" style="margin-top:var(--s-3)">사후 결과(참고): ${nxt.season} ${nxt.pa}타석 · OPS 백분위 ${fmt(nxt.pctOps,0)} (${sgn(nxt.pctOps-p.pctOps,0)})</p>`:''}
+  <p class="pmeta" style="margin-top:var(--s-3)">출처: ${safe(p.sourceFile)} · 선수 ID ${safe(p.id||'없음')}${mode==='KBO'?' · 사용자가 불러온 파일(정확성·권한 별도 확인 필요)':' · CC BY-SA 3.0 · PA에 포수 타격방해 미포함'}</p>`;
+}
+function findPlayer(v){v=v.trim();if(!v)return null;const a=base();return a.find(r=>r.name+' · '+r.team===v)||a.find(r=>r.name===v)||null}
+function compare(){
+  // 선수 A는 사용자가 직접 입력하기 전까지 선택 선수를 따라간다
+  if(!cmpATouched&&selected)$('cmpA').value=selected.name+' · '+selected.team;
+  const A=findPlayer($('cmpA').value),B=findPlayer($('cmpB').value);
+  if(!A||!B){$('compare').innerHTML='<p class="sub" style="margin:0">선수 B를 입력하면 두 선수를 나란히 비교합니다.</p>';return}
+  const rows=[['나이',r=>r.age,0,-1],['타석',r=>r.pa,0,1],['표본 신뢰도',r=>r.reliability,2,1],['OPS',r=>r.ops,3,1],['OPS 백분위',r=>r.pctOps,0,1],['ISO',r=>r.iso,3,1],['BB%',r=>r.bbRate,'%',1],['K%',r=>r.kRate,'%',-1],['BABIP',r=>r.babip,3,0],['세부능력 v1',r=>r.score,1,1],['독립 신호 z',r=>r.signal,'z',1]];
+  const f=(v,d)=>d==='%'?pct(v):d==='z'?sgn(v):fmt(v,d);
+  $('compare').innerHTML=`<div class="table-wrap" style="max-height:none"><table class="cmp"><thead><tr><th>지표</th><th class="n">${safe(A.name)}</th><th class="n">${safe(B.name)}</th></tr></thead><tbody>${rows.map(([n,g,d,dir])=>{const a=g(A),b=g(B),w=dir&&a!==null&&b!==null&&a!==b?((a-b)*dir>0?'a':'b'):'';return `<tr><td>${n}</td><td class="n ${w==='a'?'win':''}">${f(a,d)}</td><td class="n ${w==='b'?'win':''}">${f(b,d)}</td></tr>`}).join('')}</tbody></table></div><p class="pmeta" style="margin:var(--s-2) 0 0">▲ = 해당 지표에서 상대적으로 유리한 쪽(나이·K%는 낮을수록, BABIP은 판단하지 않음). 상태: ${safe(A.name)} ${state(A)} · ${safe(B.name)} ${state(B)}</p>`;
+}
+function backtestView(bt){
+  if(!bt){$('backtest').innerHTML='<div class="empty"><h3>검증할 연속 시즌이 없습니다</h3><p>연속된 두 시즌 데이터를 불러오면 실행됩니다. 그 전에는 신호의 예측력에 대해 아무것도 주장하지 않습니다.</p></div>';return}
+  if(!bt.ok){$('backtest').innerHTML=`<div class="empty"><h3>표본이 부족해 실행하지 않았습니다</h3><p>두 시즌 모두 100타석 이상이고 선수 ID로 이어지는 선수가 ${bt.pairs}명뿐입니다(최소 10명).</p></div>`;return}
+  const W=innerWidth<1000?Math.max(300,Math.round($('backtest').clientWidth-36)):440,H=W<600?Math.round(W*.75):260,l=44,r=14,t=14,b=40,X=z=>l+(W-l-r)*(Math.max(-3,Math.min(3,z))+3)/6,Y=d=>H-b-(H-t-b)*(Math.max(-80,Math.min(80,d))+80)/160;
+  let s='';for(const z of [-3,-2,-1,0,1,2,3])s+=`<line x1="${X(z)}" x2="${X(z)}" y1="${t}" y2="${H-b}" stroke="${z?'var(--grid)':'var(--axis)'}"/><text x="${X(z)}" y="${H-b+16}" text-anchor="middle" fill="var(--ink-3)" font-size="11">${z>0?'+':''}${z}</text>`;
+  for(const d of [-80,-40,0,40,80])s+=`<line x1="${l}" x2="${W-r}" y1="${Y(d)}" y2="${Y(d)}" stroke="${d?'var(--grid)':'var(--axis)'}"/><text x="${l-6}" y="${Y(d)+4}" text-anchor="end" fill="var(--ink-3)" font-size="11">${d>0?'+':''}${d}</text>`;
+  for(const p of bt.pairs)s+=`<circle cx="${X(p.a.signal).toFixed(1)}" cy="${Y(p.d).toFixed(1)}" r="${p.a.isGem?4.5:3}" fill="${p.a.isGem?'var(--series-gem)':'var(--series-base)'}" fill-opacity="${p.a.isGem?.95:.6}" stroke="${p.a.isGem?'#BFF3E2':'var(--mark-ring)'}" stroke-width="1"><title>${safe(p.a.name)}: ${bt.from} 신호 ${sgn(p.a.signal)} → OPS 백분위 ${sgn(p.d,0)}</title></circle>`;
+  s+=`<text x="${(l+W-r)/2}" y="${H-6}" text-anchor="middle" fill="var(--ink-2)" font-size="12">${bt.from} 독립 신호 z →</text><text transform="translate(12 ${(t+H-b)/2}) rotate(-90)" text-anchor="middle" fill="var(--ink-2)" font-size="12">${bt.to} − ${bt.from} OPS 백분위 변화</text>`;
+  const row=(n,c,mn,up)=>`<tr><td>${n}</td><td class="n">${c}</td><td class="n">${sgn(mn,1)}</td><td class="n">${up===null||up===undefined?'—':(up*100).toFixed(0)+'%'}</td></tr>`;
+  const kind=bt.league==='MLB'?'<b>사전 고정 기준의 다른 리그 적용(탐색적 검증).</b> v2 정의와 원석 기준은 KBO 탐색 단계에서 정했고, MLB 데이터를 본 뒤 바꾸지 않았습니다. 다만 같은 사람이 야구 지식을 바탕으로 설계했으므로 독립 검증이라고 하지는 않습니다.':'<b>탐색적 검증.</b> 이 KBO 데이터를 본 뒤 모델을 설계했으므로 독립 검증이 아닙니다.';
+  $('backtest').innerHTML=`<div class="bt-grid"><div><small>r(${bt.from} v2 신호, 변화)</small><b class="num">${sgn(bt.rSig)}</b><small>${bt.n}명 · 순열 p ${pv(bt.rSigP,bt.iters)}</small></div><div><small>추가 설명력 ΔR²</small><b class="num">+${fmt(bt.dR2,3)}</b><small>기준(OPS${bt.useAge?'·나이':''}) R² ${fmt(bt.baseR2,3)} · p ${pv(bt.dR2P,bt.iters)}</small></div><div><small>비교: r(v1 점수, 변화)</small><b class="num">${sgn(bt.rV1)}</b><small>r(OPS 백분위, 변화) ${sgn(bt.rOps)} — 평균회귀</small></div></div>
+  <div class="validate"><div class="card tight"><h3>앞 시즌 신호와 다음 시즌 변화</h3><p class="sub">점 하나 = 선수 1명. 오른쪽 위로 기울수록 신호가 변화를 설명합니다.</p><svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="앞 시즌 신호와 다음 시즌 OPS 백분위 변화 산점도, ${bt.n}명">${s}</svg><div class="legend"><span><i class="sw gem"></i>${bt.from} 원석 신호</span><span><i class="sw base"></i>그 밖의 선수</span></div></div>
+  <div class="card tight"><h3>후보를 고르는 방식별 다음 시즌 결과</h3><p class="sub">${bt.from} 기준으로 고른 집단의 ${bt.to} OPS 백분위 변화</p><div class="table-wrap" style="max-height:none"><table><thead><tr><th>선정 방식</th><th class="n">인원</th><th class="n">평균 변화</th><th class="n">상승 비율</th></tr></thead><tbody>${row('단순 OPS 하위 (백분위 45 미만)',bt.low,bt.lowMean,bt.lowUp)}${row('v1 원석 (점수 65+)',bt.v1,bt.v1Mean,null)}${row('v2 원석 (z ≥ 1)',bt.flag.length,bt.flagMean,bt.flagUp)}${row('OPS 하위 중 v2 원석 아님',bt.rest.length,bt.restMean,null)}</tbody></table></div>
+  <p class="pmeta" style="margin:var(--s-3) 0">v2 원석 − 나머지 = <b style="color:var(--ink-1)">${sgn(bt.diff,1)}</b> 백분위 · 순열 p ${pv(bt.diffP,bt.iters)}${bt.diffP!==null&&bt.diffP>=.05?' · 통계적으로 유의하지 않음':''}</p>
+  <p class="caveat">${kind} 비교한 시즌이 한 쌍뿐이고, 두 시즌 모두 100타석 이상인 선수만 포함해 생존 편향이 있습니다. p값은 고정 시드로 ${bt.iters}회 순열해 구한 단측 값입니다.</p></div></div>`;
+}
+function method(){
+  $('method').innerHTML=`<h3>지표 계산과 검증</h3>
+  <p><b>모델 상태</b>: Experimental Scouting Model · v0.1.0. 탐색적 검증만 거쳤고 독립 검증은 하지 않았습니다. 특정 미래 시즌의 성적을 예측하지 않습니다.</p>
+  <p><b>지원 범위</b>: MLB 2023–2025 정규시즌 타자(공개) · KBO 2024–2025 1군 타자(로컬 CSV). <b>미지원</b>: 2026 시즌, 퓨처스·마이너리그 전수 분석, 투수, 검증된 활약 확률·연봉 예측.</p>
+  <p><b>비교 단위</b>: 같은 리그·같은 시즌의 30타석 이상 선수. MLB와 KBO는 백분위·회귀계수·결과를 따로 계산하고 섞지 않습니다.</p>
+  <p><b>v1 세부능력 점수</b> = ISO 백분위×0.45 + BB% 백분위×0.30 + (100−K% 백분위)×0.25 (가설 가중치)</p>
+  <p><b>v2 독립 신호 z</b>: v1을 OPS 백분위에 선형회귀한 잔차를 표준화한 값. OPS와의 상관이 0인 것은 구성상 당연하며, 예측력은 백테스트로만 판단합니다.</p>
+  <p><b>원석 신호</b>: z ≥ 1.0, OPS 백분위 &lt; 45, 100타석 이상. 소표본 선수는 지우지 않고 표본 신뢰도와 함께 표시합니다. 신뢰도는 지표별 PA/(PA+M)의 평균이며, M = K% 60·BB% 120·ISO 160은 공개 연구에서 흔히 인용되는 근사값입니다.</p>
+  <p><b>백테스트</b>: 앞 시즌 기록만으로 신호를 만들고 다음 시즌 OPS 백분위 변화와 비교합니다. 기준 모형(OPS 백분위·나이) 대비 R² 증가분과, 단순 OPS 하위 선정과의 차이를 함께 봅니다.</p>
+  <p><b>MLB 데이터</b>: <a href="https://sabr.org/lahman-database/" target="_blank" rel="noopener">SABR Lahman Baseball Database</a> 1871–2025(2025판) 중 2023–2025 타격 기록. Copyright 1996–2025 SABR(Sean Lahman 기증), <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>. 가공 내용은 시즌 내 구단 합산, PA = AB+BB+HBP+SH+SF(포수 타격방해 제외), 6월 30일 기준 나이, 주 포지션입니다. 선수 5명·10개 선수-시즌을 MLB 공식 기록과 대조했고, PA 외 지표가 모두 일치했습니다.</p>
+  <p><b>KBO 데이터</b>: 원천 권리가 확인되지 않아 공개하지 않습니다. 로컬에서 불러온 CSV로만 분석합니다. 2026 시즌과 퓨처스는 MLB·KBO 모두 미확보입니다.</p>`;
+}
+$('upload').addEventListener('change',async e=>{const errs=[];let add=[],skipped=0;for(const file of e.target.files){try{const res=NV.fromCsv(await file.text(),file.name);add.push(...res.rows);skipped+=res.skipped}catch(err){errs.push(err.message)}}e.target.value='';
+  const before=S.KBO.records.length+add.length;S.KBO.records=NV.score(NV.dedupe(S.KBO.records.concat(add)));const dup=before-S.KBO.records.length;S.KBO.bt={};selected=null;
+  if(S.KBO.records.length)opts();coverage();render();$('clear').classList.toggle('hidden',!S.KBO.records.length);
+  setNotice(`KBO 유효 행 ${add.length}개를 불러왔습니다${skipped?` · league가 KBO/FUTURES가 아니거나 필수값이 빠진 ${skipped}행 제외`:''}${dup?` · 같은 선수-시즌 중복 ${dup}행은 나중에 불러온 값으로 대체`:''}. `+(errs.length?'오류: '+safe(errs.join(' / ')):'파일은 이 브라우저 안에서만 처리되었습니다.'),errs.length?'error':'success')});
+$('clear').onclick=()=>{S.KBO.records=[];S.KBO.bt={};setMode('KBO')};
+document.querySelectorAll('#mainTable th[data-k] button').forEach(btn=>btn.onclick=()=>{const k=btn.parentElement.dataset.k;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=['name','team','state','kRate','age'].includes(k)?1:-1}render()});
+for(const id of ['season','league','team','status','query','metric','btPair','cmpA','cmpB','minPa'])$(id).addEventListener(['query','cmpA','cmpB','minPa'].includes(id)?'input':'change',()=>{if(id==='minPa')$('minPaV').value=$('minPa').value;if(id==='cmpA')cmpATouched=$('cmpA').value.trim()!=='';if(id==='season'||id==='league'){$('cmpA').value='';$('cmpB').value='';cmpATouched=false;opts()}render()});
+$('reset').onclick=()=>{$('team').value='all';$('status').value='all';$('minPa').value=0;$('minPaV').value='0';$('query').value='';render()};
+$('ftoggle').onclick=()=>{const o=$('filterbar').classList.toggle('open');$('ftoggle').setAttribute('aria-expanded',o)};
+document.querySelectorAll('.modes button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+NVScatter.onResize(()=>{if(R().length)render()});
+setMode(new URLSearchParams(location.search).get('mode')==='kbo'?'KBO':'MLB');
+</script></body></html>
